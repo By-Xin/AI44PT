@@ -1,0 +1,20 @@
+{
+  "doc_id": "doc-20250919-194310",
+  "primary_type": "undetermined",
+  "dimensions": {
+    "utility_dominates": {
+      "value": false,
+      "evidence_spans": []
+    },
+    "on_the_ground": {
+      "value": false,
+      "evidence_spans": []
+    }
+  },
+  "reasoning_brief": "Unable to process - model returned schema instead of analysis",
+  "whack_a_mole_flags": [],
+  "secondary_types": [],
+  "confidence": 0.0,
+  "disagreements": [],
+  "citations": []
+}

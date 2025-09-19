@@ -4,3 +4,4 @@ I chose the first 10 rows (according to the index) and add one more type-4 artic
 
 The pdfs' file name correspond to the excel JRG article sublist.xlsx.
 
+Here, file `sample_paper.pdf` is the same as paper-1. I've renamed it for coding convenience.

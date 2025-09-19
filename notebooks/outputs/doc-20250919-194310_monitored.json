@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "doc_id": "doc-20250919-194310",
+    "primary_type": "T1",
+    "secondary_types": [],
+    "dimensions": {
+      "utility_dominates": {
+        "value": true,
+        "evidence_spans": [
+          {
+            "quote": "the analysis, conclusions, and theories treat individuals, organizations and states as largely self-interested",
+            "page_or_loc": "p.40"
+          }
+        ]
+      },
+      "on_the_ground": {
+        "value": true,
+        "evidence_spans": [
+          {
+            "quote": "provide, and justify, systematic protocols to facilitate sorting of what we refer to as 'ambiguous' cases",
+            "page_or_loc": "p.27"
+          }
+        ]
+      }
+    },
+    "whack_a_mole_flags": [],
+    "reasoning_brief": "The paper emphasizes utility in addressing concrete problems.",
+    "confidence": 0.9,
+    "disagreements": [],
+    "citations": []
+  },
+  "doc_id": "doc-20250919-194310",
+  "primary_type": "undetermined",
+  "dimensions": {
+    "utility_dominates": {
+      "value": false,
+      "evidence_spans": []
+    },
+    "on_the_ground": {
+      "value": false,
+      "evidence_spans": []
+    }
+  },
+  "reasoning_brief": "Analysis incomplete"
+}
