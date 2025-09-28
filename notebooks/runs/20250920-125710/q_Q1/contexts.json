@@ -1,0 +1,29 @@
+{
+  "codebook": [],
+  "document": [
+    {
+      "text": "factuals used were based on the assumptions identiﬁed in the literature\ndiscussed earlier in the article, resulting in the intermediary solution (Fiss 2011). It should be noted that, while the\nintermediary solution may look “simpler” than the complex solution, it provides less categorical delineation.\n5. Discussion: Further exploration of the diffusion network perspective\nThe raw data (Table 2) provide empirical evidence for a recurring assumption in the literature on voluntary pro-\ngrams. Voluntary programs that indicate good performance in terms of attracting participants by no means\nalways also indicate good performance in changing the participants’ behavior, and vice versa. This indicates that\nvarious metrics are required to assess the overall performance of a voluntary program – that is, the extent to\nwhich it helps to address the societal problem it targets (Borck & Coglianese 2009; Potoski & Prakash 2009; van\nder Heijden 2012). The iterative steps of data–theory matching provide evidence for other core assumptions in\nthe literature on voluntary program performance. That is, various conditions interact in how they affect program\nperformance (conjunctural causation), and different theoretical models can explain program performance (equi-\nﬁnality) (Fowler & Rauch 2006; Thøgersen 2010; Boyd & Ghosh 2013).\nTable 7\nConﬁgurations of conditions associated with outcomes ~O1 and ~O2\nCondition\nConﬁgurations\n~O1\n~O2\nVII.i\nVII.ii\nVII.iii\nVII.iv\nVIII.i\nVIII.ii\nIX\nX\nXI\nPR.\n●\n●\n●\n●\n●\n●\n●\nPE.\n●\n●\nø\nø\n●\n●\n\u0001\nR1.\n●\n●\n●\n\u0001\n\u0001\n●\n●\nR2.\n●\n●\n●\n\u0001\nR3.\n●\n●\n●\n\u0001\n●\nDN.\n\u0001\n\u0001\n\u0001\n\u0001\n●\n\u0001\n\u0001\nRaw coverage\n0.50\n0.45\n0.36\n0.23\n0.09\n0.05\n0.05\n0.67\n0.33\nUnique coverage\n0.14\n0.05\n0.09\n0.09\n0.09\n0.05\n0.05\n0.67\n0.33\nConsistency\n1.00\n1.00\n1.00\n1.00\n1.00\n1.00\n1.00\n1.00\n1.00\nOverall solution coverage\n1.00\n1.00\nOver",
+      "pages": [
+        13
+      ],
+      "tag": null,
+      "score": 0.4444189667701721
+    },
+    {
+      "text": "ovides brief summaries of the cases studied.\n5\nFor those less familiar with QCA, conceptually this may resemble a program output rather than program outcome. QCA,\nhowever, strictly uses the term outcome for “dependent variables” and output for “independent variables.” In this article,\nI keep to the QCA terminology.\n6\nOnline Appendix C in Appendix S1 provides an overview of the codes used.\n7\nSee online Appendix A in Appendix S1 for a calibration of the conditions and outcomes.\n8\nIt should be noted that the variance in outcomes observed is skewed toward negative outcomes for O1 and positive out-\ncomes for O2. The lack of variance in outcomes observed is not expected to affect the theoretical implications of the arti-\ncle (i.e. the relevance of including a diffusion of innovations perspective in studying voluntary programs), but it may\naffect the generalizability of the empirically observed patterns (Payne & Williams 2005; Schneider & Wagemann 2012).\n9\nSee further online Appendix A in Appendix S1.\n10\nSee further online Appendix A in Appendix S1.\n11\nSee online Appendix A in Appendix S1.\n12\nMore concise versions of the club theory were also explored: for example, a model where all rewards were added up, as\nwell as models where only an individual reward or pair of rewards was included. All of these models capture less variance\nin the observed outcomes than the club theory model presented here.\n13\nBecause of space limitations, the full analyses for sufﬁcient conditions for the outcomes O1, O2, ~O1, and ~O2 are pre-\nsented in online Appendix A in Appendix S1.\n14\nAll of the cases are discussed at some length in online Appendix B in Appendix S1.\n15\nSee further Online Appendix A in Appendix S1.\nReferences\nAckerman F (1997) Why Do we Recycle? Markets, Value and Public Policy. Islan",
+      "pages": [
+        17
+      ],
+      "tag": null,
+      "score": 0.4283824563026428
+    },
+    {
+      "text": "0\n0.45\n0.36\n0.23\n0.09\n0.05\n0.05\n0.67\n0.33\nUnique coverage\n0.14\n0.05\n0.09\n0.09\n0.09\n0.05\n0.05\n0.67\n0.33\nConsistency\n1.00\n1.00\n1.00\n1.00\n1.00\n1.00\n1.00\n1.00\n1.00\nOverall solution coverage\n1.00\n1.00\nOverall solution consistency\n1.00\n1.00\nThe results of a set theoretic analysis for outcomes ~O1 and ~O2.15 The 11 core conﬁgurations (I–XI) are the logically\nreduced empirical observations of conditions that are sufﬁcient to cause the outcome under scrutiny. Large full circles (●)\nindicate core causal conditions that must be present to cause the outcome; large crossed out circles (\u0001) indicate core causal\nconditions that must be absent; small full circles (●) indicate contributing causal conditions that must be present to cause the\noutcome; and small crossed out circles (ø) indicate contributing causal conditions that must be absent. Fiss (2011) provides a\nhighly accessible discussion of this notation.\n© 2018 The Authors. Regulation & Governance Published by John Wiley & Sons Australia, Ltd\n13\nThe diffusion network perspective\nJ. van der Heijden",
+      "pages": [
+        13
+      ],
+      "tag": null,
+      "score": 0.4042261838912964
+    }
+  ]
+}

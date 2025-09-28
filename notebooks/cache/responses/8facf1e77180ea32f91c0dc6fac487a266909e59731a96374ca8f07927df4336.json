@@ -1,0 +1,14 @@
+{
+  "text": "The primary 4PT Type is **Type 3**. The analysis applies beyond understanding, addressing specific outcomes (p.40).",
+  "usage": {
+    "input_tokens": 1756,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 28,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 1784
+  }
+}

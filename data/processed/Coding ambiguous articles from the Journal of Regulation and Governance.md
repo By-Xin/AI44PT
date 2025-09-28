@@ -1,0 +1,80 @@
+# Coding ambiguous articles from the Journal of Regulation and Governance
+
+**Article 1:** [Assessing the institutionalization of private sustainability governance in a changing coffee sector](https://www.dropbox.com/s/i8qzujc5tsgz0rz/04%20Assessing%20the%20institutionalization%20of%20private%20sustainability%20governance%20in%20a%20changing%20coffee%20sector.pdf?dl=0)
+
+- Authors: Janina Grabs
+- Abstract: The potential of transnational private governance initiatives to constitute effective alternatives to state-led regulation of global value chains rests on their ability to scale up and become institutionalized in a given sector. This study examines whether such institutionalization has occurred in the coffee sector, the commodity with the most widespread adoption of certified products and over 30 years’ experience of private governance, and tests hypotheses on facilitating and inhibiting conditions. It finds that while norm generation around responsible supply chain management and the organizational institutionalization of standard-setting bodies is well advanced, the practice of internalizing social and environmental externalities through the routinized production and purchase of higher priced certified goods continues to be questioned by industry actors. Indeed, conditions that favored normative and organizational institutionalization, such as high levels of industry concentration, product differentiation, and deliberative interaction, are shown to represent barriers to the practice-oriented institutionalization of market-driven regulatory governance.
+- Comments from previous researchers: Type 2 or Type 3.
+  - The paper examines how private governance for sustainability can be institutionalized
+    using the coffee sector as an example.
+  - It explores three ways/forms of institutionalizing: norms, organizations, and practices.
+  - The paper identifies key reasons for the lack of institutionalizing of private sustainability governance in the coffee sector.
+  - The paper does not discuss how and whether private governance can address environmental problems or address the structural features of the problem.
+  - It is difficult to ascertain whether the paper uses an economic rationale, which could classify it as Type 2 or a non-economic rationale, which could classify it as Type 3.
+  - Key reasons for lack of institutionalizing PSG in the coffee sector include the non-existence of a stable political community of practice, the non-existence of sustained demand for certified products, highly politicized issue areas, existence of hegemonic power structures, and passive revolutions.
+  - Large MNCs/retailers find certification to be an expensive tool and have created their own certifications/labels instead of depending on third-party certifiers.
+- Problem classification: Type 3. The problem of how private governance for sustainability can be institutionalized focuses on balancing the interests of various stakeholders, rather than addressing the environmental problem itself.
+
+**Article 2:** Authoritarian but responsive: Local regulation of industrial energy efficiency in Jiangsu, China
+
+* **Authors:** Junming Zhu, Marian R. Chertow
+* **Abstract:** Regulatory behavior and effectiveness in authoritarian settings are subject to alternative characterizations. By tracing enforcement processes through a variety of case studies, this article proposes and refines a new model, at least with respect to energy efficiency regulations in China: authoritarian but responsive. Local rulemaking and operationalization is authoritarian, with strong and coordinative bodies of regulation, strategic plans, and active involvement of local authorities. Local authorities, however, often find themselves facing a welter of laws imposed on companies that create competing priorities for these local officials who then must struggle to find pragmatic solutions. On numerous occasions, such satisficing behavior by local officials makes them responsive to the performance and demands of regulated firms. Embedded in the decentralized authoritarian context, the authoritarian but responsive approach is found to be a rational choice of local governments and different from previous conceptualizations. It helps local governments coordinate across a diverse array of regulatory issues. Drawing on environmental enforcement in China, the model provides consistent explanations for the seemingly changing and discretionary enforcement incidents.
+* **Comments from previous researchers:** Type 3 or Type 4.
+  * The paper explores governance within an authoritarian system, where local regulators compete with different interests and a strong central regulator that demands action on pollution and energy demands.
+  * The environmental policies in China are given type 4 status due to the strength of the central government.
+  * The paper draws on a type 3 analysis to understand how local regulators maneuver within this framework.
+  * The paper suggests that energy regulators should adopt a combination of Type 4 and Type 3 approaches, with a focus on improving China's energy efficiency.
+  * Type 4 policies include closure of old plants with low energy efficiency, electricity quota, mandatory upgrades of tech, etc.
+  * Type 3 approaches suggest responsive enforcement to improve overall regulatory effect, with direct preferential enforcement of less stringency compared to other firms and alleviation of previous punitive enforcement.
+  * Local authorities were found to be flexible and responsive to industrial performance when enforcing mandatory policies, leading to better compliance and improvement in energy efficiency.
+  * Regulators were more flexible based on the firm's energy efficiency and other local contributions such as treatment of local waste, employment levels, tax revenue, etc.
+* **Problem classification:** Type 1. The problem focusses on the impacts of governance regimes on specific environmental issues, in this case "industrial energy efficiency".
+
+**Article 3:** Transparency in transnational governance: The determinants of information disclosure of voluntary sustainability programs
+
+* **Authors:** Philip Schleifer, Matteo Fiorini, Graeme Auld
+* **Abstract:** The rise of "new" transnational governance has intensified debates about a lack of accountability in global politics. Reviewing the mechanisms through which transparency can foster accountability beyond the state, this article explores the determinants of information disclosure in the field of transnational sustainability governance. Examining the institutional design of 113 voluntary sustainability programs, we find a positive correlation between the involvement of public actors and information disclosure. In contrast, the role of civil society is more ambiguous. There is no statistical support for arguments linking nongovernmental organization participation to increased transparency. At the same time, our analysis reveals a robust correlation between civil society-led metagovernance and information disclosure. Moreover, we find that crowding has a negative effect on transparency, whereas normative peer pressures have no influence. At a broader level, the analysis reveals a lack of "deep transparency" among transnational sustainability governors. This limits the scope for transparency-induced accountability in this policy domain.
+* **Comments from previous researchers:** Type 2 or Type 3.
+  * The article uses a quantitative research approach to analyze 113 voluntary sustainability programs and their level of transparency.
+  * The focus is on accountability among actors and information disclosure.
+  * The analysis is Type 3 and does not address structural features of the problem.
+  * The article explores the possible causes and determinants of transparency and information disclosure.
+  * The impact of VSPs and higher information disclosure on environmental outcomes is not explored.
+  * The theory of club goods is used to analyze information disclosure patterns of VSPs.
+  * The article could be classified as Type 2, but Type 3 seems like a better fit.
+* **Problem classification:** Type 3. The problem focuses on accountability among actors in transnational governance.
+
+**Article 11:** Knox-Hayes, "Negotiating climate legislation: Policy path dependence and coalition stabilization" (DRAFT)
+
+* **Ben's notes:**
+  * First it does not always follow that an application or assessment of game theory or even economic valuation will mean the paper is Type 2. This is because the paper may be assessing whether the theory works to explain something, rather than assuming the theory is correct. Second, just like cost-effectiveness analysis improved the compliance and reduce costs of Type 4 acid rain regulations through the development of a "cap and trade" system, an application of game theory or ACF/sabatier theory could be used to assess how coalitions might influence, or not, "on the ground" outcomes such as 1.5/2 degrees. Similarly, knowledge about how dialogues work a la compromise school could be reshaped to think about type 4 problems (which is how many have applied Sabatier/ACF)
+  * So game theory and costs and benefits are clues could be type 2 but not always (as the code book discusses)
+  * Likewise assessing coalition formation to think about effects of problem solving would be expected to draw on all kinds of theory of support, including game theory – but that wouldn't be its ultimate interest and it wouldn't be relying on game theory to tell us WHETHER the problem could be solved – only instead to understand coalition formation
+  * Second, the article is very clear that its results are not consistent with ahistorical motivations assumed by RC theory
+  * "Policy path dependence suggests that theory alone is insufficient to predict policy outcomes; policy results depend strongly on prior policy efforts, historically and socially contingent coalitions, and the resulting framing of policy possibilities."
+  * At the same time, and ironically, the article says it can model these interactions
+  * "If the conditions of prior policy and coalition formation are adequately understood, the modeling of coalition formation suggested here could be used to predict or project future policy trajectories. The model could also be used to understand current policy dilemmas and to more quickly find the equilibrium or range of equilibriums that will stabilize the field of conflict."
+  * The ironies and contradictions of these two quotes can be discussed later 😊
+  * Third, result we need to distinguish the instrumentalist orientation of the paper ("how can we understand coalition formation to improve climate outcomes?") from the findings itself.
+  * For example even though the article found that ahistorical RC couldn't explain outcomes, what if it did find this? Would that still be biased, or would it instead tell of the "impossibility" of finding non RC behaviors? My feeling is that because we know the world isn't explained solely by RC behaviors, that this "finding" is an example of bias, rather than an empirical observation (granted same could be said for historical critical juncture work, but at least these folks are open to finding broader sets of motivations that can and do exist).
+  * For all these reasons this article falls outside Type 2 thinking, even though influenced by it. But, does it go enough in the direction of Type 4? Or does it provide answers that would limit an ability to solve the climate crisis qua the climate crisis?
+  * I again go back to this conclusion: "This could have a considerable benefit in accelerating the rate of policy development under conditions requiring quick action, such as climate change."
+  * "Quick action" is clearly the first key feature of climate change. At the same time the problem is weakly tended to and rather abstract.
+  * So I can see coding on both Type 4 and Type 3. At the same time, because the article discusses the clean air act, and discussions pollution as its focus, and because it does shed light on how to solve, rather than simply seek consensus or compromise about climate action, at the end of the day, it seems best classified as type 4
+
+**Article 12:** Regulation and voluntarism: A case study of governance in the making
+
+* **Authors:** Tamar Barkay
+* **Abstract:** In this article I analyze a multi-stakeholder process of environmental regulation. By grounding the article in the literature on regulatory capitalism and governance, I follow the career of a specific legislative process: the enactment of Israel's Deposit Law on Beverage Containers, which aims to delegate the responsibility for recycling to industry. I show that one crucial result of this process was the creation of a non-profit entity licensed to act as a compliance mechanism. This new entity enabled industry to distance itself from the responsibility of recycling, and thereby frustrated the original objective of the legislation, which was to implement the principle of "extended producer responsibility." Furthermore, this entity, owned by commercial companies and yet acting as an environmentally friendly organization, allowed industry to promote an anti-regulatory agenda via a "civic voice." The study moves methodologically from considering governance as an institutional structure to analyzing the process of "governancing," through which authoritative capacities and legal responsibilities are distributed among state and non-state actors. Two key findings are that this process and its outcome (i) are premised on an ideology of civic voluntarism, which ultimately delegates environmental responsibilities to citizens; and (ii) facilitate an anti-regulatory climate that serves commercial interests.
+* **Comments:**
+  * Recycling extended producer responsibility
+  * Two key findings are that this process and its outcome (i) are premised on an ideology of civic voluntarism, which ultimately delegates environmental responsibilities to citizens; and (ii) facilitate an anti-regulatory climate that serves commercial interests.
+  * The emergence of public–private regulatory regimes.
+  * "regulatory capitalism" as the overall matrix within which various forms of "new governance" come into being (Levi-Faur 2005; Braithwaite 2008).
+  * So far above it is Type 3
+  * But this sentence implies possible Type 4: "Reduce litter and divert recyclable items from the waste stream" although the only issue here is that it is still abstract – what is the problem exactly in "reducing litter" very vague…also "waste stream" also vague…in the direction of Type 4 but not exactly measurable yet…
+  * Recycling corporation undermined original purpose of law (this is same in forest practices boards)- to put costs onto industry
+  * Delegated to individual citizens regime. This technique, however virtuous and in line with the aspirations of new governance arrangements it may be, also raises grave questions concerning the ability of organized commercial interests to use it to shape regulatory frameworks in ways that may undermine business's own responsibility for the public good.
+  * My observations: this article clearly is focused on understanding if a public/private innovation might yield compliance for a specified outcome: recycling etc. The answer is no: that it went in the other direction and industry used its power to fend of requirements to individuals that led to outcomes that were not intended
+  * So this seems to be Type 4 BUT the issue here is that recycling is also abstract: what problem exactly was trying to be solved? It is too abstract to be measurable in terms of an "on the ground" problem. BUT at the same time they are thinking of "on the ground" problems however badly defined, and they are assessing where private or non-state regulatory capitalism can solve problems that they were created to address.
+* **Problem classification:** Type 4. So for these reasons I would still give a 4 (not because they found a negative answer but because they were assessing whether these innovations improved compliance and uptake)

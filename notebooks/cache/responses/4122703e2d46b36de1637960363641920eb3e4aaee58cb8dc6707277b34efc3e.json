@@ -1,0 +1,14 @@
+{
+  "text": "Missing evidence specifically for Q1 & Q2. Unable to determine the primary 4PT Type.",
+  "usage": {
+    "input_tokens": 775,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 21,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 796
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "text": "The evidence for whether the article addresses an \"on the ground\" problem context is not provided in the document excerpts. Therefore, I cannot cite specific text to support a response to Q3.",
+  "usage": {
+    "input_tokens": 1512,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 39,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 1551
+  }
+}

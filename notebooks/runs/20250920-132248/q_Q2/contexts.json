@@ -1,0 +1,73 @@
+{
+  "codebook": [
+    {
+      "text": "managing a \nclearly specified “on the ground” \n \nIf Yes, then the article is \neither Type 2 or Type 3 \nIf No, then the article is \neither Type 1 or Type 4 \nRefer to Section C2.1.1 \nand C2.1.2 in the \nAs of September 12, 2025 2:27 pm \n \n- 41 -\n# \nParameter \nType of Input (or example) \nComments/ References \nproblem or class of problems? (Yes / \nNo) \ncodebook for additional \nguidance \n27 \nProvide arguments that supports \nyour response to Q26 \nText \n- \n28 \nProvide some key text passages \nfrom the article that support your \nresponse to Q26 \nText \n- \n29 \nUtility \nDo the analysis, conclusions, and \ntheories treat individuals, \norganizations and states as largely \nself-interested, satisfaction driven \nentities that seek to maximize some \nkind “utility” outcome? \nYes / No \nIf Yes, then the article is \neither Type 1 or Type 2 \nIf No, then the article is \neither Type 3 or Type 4 \nRefer to Section C2.1.3 \nand C2.1.4 in the \ncodebook for additional \nguidance \n30 \nProvide arguments that supports \nyour response to Q29 \nText \n- \n31 \nProvide some key text passages \nfrom the article that support your \nresponse to Q29 \nText \n- \n32 \nUtility \nDo the analysis incorporate theories \nand conclusions incorporate an \nassessment of individuals, \norganizations and/or states that \nextends beyond self-interested \nsatisfaction seeking motivations? \nYes / No \nIf Yes, then the article is \neither Type 3 or Type 4 \nIf No, then the article is \neither Type 1 or Type 2 \nRefer to Section C2.1.3 \nand C2.1.4 in the \ncodebook for additional \nguidance \n33 \nProvide arguments that supports \nyour response to Q32 \nText \n- \n34 \nProvide some key text passages \nfrom the article that support your \nresponse to Q32 \nText \n- \n35 \nWhat are some key words used in \nthe article that support your problem \ntype classification? \nText \nExamples of key words \nfor Type 1: \n• \nOptimality \n• \nFree rider \n• \nShirking \n• \nCollective action dilemmas \n• \nEfficiency \n• \nOptimization \n• \nInternalizing externalities \nExamples of key words",
+      "pages": [
+        40,
+        41
+      ],
+      "tag": null,
+      "score": 0.5129875540733337
+    },
+    {
+      "text": "ext \nExamples of key words \nfor Type 1: \n• \nOptimality \n• \nFree rider \n• \nShirking \n• \nCollective action dilemmas \n• \nEfficiency \n• \nOptimization \n• \nInternalizing externalities \nExamples of key words \nfor Type 2 \nExamples of key words \nfor Type 3 \nExamples of key words \nfor Type 4 \n36 \nBased on the above, what is the \nproblem type of the article (Type 1, \n2, 3, and 4) \nType 1, 2, 3, and 4 auto-populated \nbased on response to Q23, Q26, Q29, \nQ32 \n \n37 \nDifficulty in coding the article and \nidentifying the problem type \nChoose from drop down \n• \n1 – Very easy \nScore of 1 and 2 can be \nconsidered an ‘explicit’",
+      "pages": [
+        41
+      ],
+      "tag": null,
+      "score": 0.5073539018630981
+    },
+    {
+      "text": "even make those worse off. This means that they \nare largely conducting research in which its lessons are “problem contingent”.  Any effort to generate \nlessons beyond a class of problems that is offered as a way to think about, and manage, all problems, is \nevidence that a scholarly analysis is not in this category. More specifically, any effort that concludes it is \nnot “feasible” or “rational” to address a particular problem at hand that draws on a pre-established theory \nor framework that that was developed to analyse any and all problem is outside of this sorting category. \n \nThis elaboration leads to the identification of a more nuanced table of which human and AI coders must \nbe aware. Coders will note that I have also changed the Y axis label to “problem contingent” which I treat \nas synonymous as “problem solving” dominates, but also more useful for coding purposes. I keep the \nbroader term in the first table as it is more accessible to the uninitiated coder, while bringing in the more \nspecific term once they have read these first few overview pages. \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \nTable 2: The Four Problem Types- Expanded Distinctions \n \nUtility dominates? \nDoes the analysis, conclusions, and theories treat individuals, organizations and \nstates as largely self-interested, satisfaction driven entities that seek some kind \n“utility enhancing” outcome?",
+      "pages": [
+        5
+      ],
+      "tag": null,
+      "score": 0.48720285296440125
+    },
+    {
+      "text": "er attention to “excludability”, this school does the same to understand how, not whether, a \nparticular environmental problem can be solved. For example, my careful attention to this question with \nIshani Mukherjee, Lahiru Wijedasa and Altaf Virani, to Peatland, found that a key features was that its \nkey features meant that it was impossible to maintain with irrigation – which would ultimately produce \nresource collapse (Cashore et al. 2024). Likewise this classification is consistent with those seeking to \navoid erosion of hillside streams which the science shows that if policies must conform to the key feature \nthat any number of trees must not be removed (Sabatier and Jenkins-Smith 1993). Hence this school – \nwhether looking at a particular species or the 1.5 degree imperative spends careful time on the nature of \nthe problem, and works inductively, or teleologically, to uncover those key features that would need to be \nascertained to effectively manage the problem. \n \n \nUtility dominates? No. In fact, this school has documented overwhelming evidence corroborating \nCashore’s Chapter One, that almost all Type 4 problems almost always result from, or are exacerbated by, \nhighly effective Types 3, 2 and 1 policy solutions (Sinden, Kysar, and Driesen 2009; Zeckhauser and \nSchaefer 1968; Ackerman and Heinzerling 2004).  \n \nSolution orientation: confronts “commensurability” biases (Tribe 1972) inherent in the approach of the \nCommons and Optimization schools to instead, advancing a “sequentialist” approach that ranks “on the \nground” problems in order of importance to policy makers and society, rather than turning to cost-benefit \nor multi-goal policy analysis to make these choices for them (Cashore and Bernstein 2022).   \na classic example concerns anti-slavery as a policy objective that trumps utility calculations or \ncompromise solutions (Cashore and Bernstein 2022). Hence, the prioritization school’s approach narrows \nsolutions capable of achieving, rather than c",
+      "pages": [
+        21
+      ],
+      "tag": null,
+      "score": 0.48075172305107117
+    },
+    {
+      "text": "a particular “on the ground” problem. That \nis, they eschew asking “whether” a problem can be effectively managed, and instead ask, given the \nproblem at hand, how can it be effectively managed?  \n \nAs of September 12, 2025 2:27 pm \n \n- 5 -\nThis category then incorporates a broad group of scholars and analysts who are united in their quest to \nunderstand and effectively management an “on the ground” problem such as the extinction of a particular \nspecies or limiting warming to no more than 1.5/2 °C above pre-industrial levels promoted through the \nParis Accord. This means that the analyses they bring, and conclusions they make, will go back to \nimplications for generating knowledge useful for problem solving of a problem, or a class of problems. \nSimilarly, these analysts will never apply universal pre-established theories to assess whether the problem \nat hand ought to be solved. This is not their interest. Likewise while their research may carry lessons for \nother problems, they do not seek to generate universal theories that can be applied to any kind of problem.  \n \nPut another way, this group of scholars would, for these reasons, avoid any quest for developing a \ntheoretical orientation, or set of recommendations, that went beyond the problem or class of problems \nfrom which their research was derived. The practical result is that many in this category tend to carefully \nassess problem structure or “key features of the problem” they are attempting to shed light on how to \nbetter manage or solve.  \n \nThis is important. The reason they eschew any effort to develop a universal way to address any problem is \nbecause, by disconnecting from problem structure, the approach applied elsewhere might not effectively \nmanage or solve another class of problems – i.e. it might even make those worse off. This means that they \nare largely conducting research in which its lessons are “problem contingent”.  Any effort to generate \nlessons beyond a class of problems that is offe",
+      "pages": [
+        4,
+        5
+      ],
+      "tag": null,
+      "score": 0.48009607195854187
+    }
+  ],
+  "document": [
+    {
+      "text": "ides a highly\naccessible discussion of this notation.\n© 2018 The Authors. Regulation & Governance Published by John Wiley & Sons Australia, Ltd\n12\nJ. van der Heijden\nThe diffusion network perspective\nare related to an improvement in participants’ behavior of at least 20 percent since they joined the voluntary\nurban climate program (O2). The solution coverage and solution consistency are again high (both 1.00).\nTable 7 indicates that seven conﬁgurations in three clusters (VII.i–VII.iv, VIII.i, VIII.ii, and IX) are related to a\nfailure to attract at least 15 percent of the pool of prospective participants (~O1). The solution coverage and solu-\ntion consistency are both high (1.00). Table 7 further indicates that two conﬁgurations (X and XI) are related to a\nlack of improvement in participants’ behavior of at least 20 percent since they joined the voluntary urban climate\nprogram (~O2). The solution coverage and solution consistency are high (1.00). Tables 6 and 7 further indicate\ncore causal conditions that must be present or absent in causing the outcome (indicated by large circles in the\ntables), and contributing causal conditions (indicated by small circles in the tables). The core causal conditions in\nTables 6 and 7 present what in QCA is termed the “intermediary solution,” while the core causal conditions com-\nbined with the contributing causal conditions present the “complex solution.” The complex solution is exclusively\nbased on the empirical information at hand. The complex solution can, however, be further simpliﬁed by using\ncounterfactuals. For this study the counterfactuals used were based on the assumptions identiﬁed in the literature\ndiscussed earlier in the article, resulting in the intermediary solution (Fiss 2011). It should be noted that, while the\ninterme",
+      "pages": [
+        12,
+        13
+      ],
+      "tag": null,
+      "score": 0.38110998272895813
+    },
+    {
+      "text": "factuals used were based on the assumptions identiﬁed in the literature\ndiscussed earlier in the article, resulting in the intermediary solution (Fiss 2011). It should be noted that, while the\nintermediary solution may look “simpler” than the complex solution, it provides less categorical delineation.\n5. Discussion: Further exploration of the diffusion network perspective\nThe raw data (Table 2) provide empirical evidence for a recurring assumption in the literature on voluntary pro-\ngrams. Voluntary programs that indicate good performance in terms of attracting participants by no means\nalways also indicate good performance in changing the participants’ behavior, and vice versa. This indicates that\nvarious metrics are required to assess the overall performance of a voluntary program – that is, the extent to\nwhich it helps to address the societal problem it targets (Borck & Coglianese 2009; Potoski & Prakash 2009; van\nder Heijden 2012). The iterative steps of data–theory matching provide evidence for other core assumptions in\nthe literature on voluntary program performance. That is, various conditions interact in how they affect program\nperformance (conjunctural causation), and different theoretical models can explain program performance (equi-\nﬁnality) (Fowler & Rauch 2006; Thøgersen 2010; Boyd & Ghosh 2013).\nTable 7\nConﬁgurations of conditions associated with outcomes ~O1 and ~O2\nCondition\nConﬁgurations\n~O1\n~O2\nVII.i\nVII.ii\nVII.iii\nVII.iv\nVIII.i\nVIII.ii\nIX\nX\nXI\nPR.\n●\n●\n●\n●\n●\n●\n●\nPE.\n●\n●\nø\nø\n●\n●\n\u0001\nR1.\n●\n●\n●\n\u0001\n\u0001\n●\n●\nR2.\n●\n●\n●\n\u0001\nR3.\n●\n●\n●\n\u0001\n●\nDN.\n\u0001\n\u0001\n\u0001\n\u0001\n●\n\u0001\n\u0001\nRaw coverage\n0.50\n0.45\n0.36\n0.23\n0.09\n0.05\n0.05\n0.67\n0.33\nUnique coverage\n0.14\n0.05\n0.09\n0.09\n0.09\n0.05\n0.05\n0.67\n0.33\nConsistency\n1.00\n1.00\n1.00\n1.00\n1.00\n1.00\n1.00\n1.00\n1.00\nOverall solution coverage\n1.00\n1.00\nOver",
+      "pages": [
+        13
+      ],
+      "tag": null,
+      "score": 0.35543107986450195
+    },
+    {
+      "text": "second challenge arises from conjunctural causation (the outcomes of voluntary programs are likely to be\ncaused by different interacting conditions) and equiﬁnality (different conﬁgurations of interacting conditions may\ncause a similar outcome). In this article, this challenge is addressed through a conﬁgurative comparative research\n© 2018 The Authors. Regulation & Governance Published by John Wiley & Sons Australia, Ltd\n4\nJ. van der Heijden\nThe diffusion network perspective",
+      "pages": [
+        4
+      ],
+      "tag": null,
+      "score": 0.35176992416381836
+    }
+  ]
+}

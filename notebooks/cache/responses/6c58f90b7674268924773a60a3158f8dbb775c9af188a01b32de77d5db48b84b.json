@@ -1,0 +1,14 @@
+{
+  "text": "T. The discussion highlights voluntary programs' performance in changing behavior (p.13) and analyzes urban climate program conditions (p.9).",
+  "usage": {
+    "input_tokens": 642,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 29,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 671
+  }
+}

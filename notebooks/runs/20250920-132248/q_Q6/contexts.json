@@ -1,0 +1,75 @@
+{
+  "codebook": [
+    {
+      "text": "rguments that supports \nyour response to Q23 \nText \n- \n25 \nProvide some key text passages \nfrom the article that support your \nresponse to Q23 \nText \n- \n26 \nProblem contingency \nAre the analysis, conclusions, and \ntheories generated to apply beyond \nunderstanding, and/or managing a \nclearly specified “on the ground” \n \nIf Yes, then the article is \neither Type 2 or Type 3 \nIf No, then the article is \neither Type 1 or Type 4 \nRefer to Section C2.1.1 \nand C2.1.2 in the",
+      "pages": [
+        40
+      ],
+      "tag": null,
+      "score": 0.6779299974441528
+    },
+    {
+      "text": "managing a \nclearly specified “on the ground” \n \nIf Yes, then the article is \neither Type 2 or Type 3 \nIf No, then the article is \neither Type 1 or Type 4 \nRefer to Section C2.1.1 \nand C2.1.2 in the \nAs of September 12, 2025 2:27 pm \n \n- 41 -\n# \nParameter \nType of Input (or example) \nComments/ References \nproblem or class of problems? (Yes / \nNo) \ncodebook for additional \nguidance \n27 \nProvide arguments that supports \nyour response to Q26 \nText \n- \n28 \nProvide some key text passages \nfrom the article that support your \nresponse to Q26 \nText \n- \n29 \nUtility \nDo the analysis, conclusions, and \ntheories treat individuals, \norganizations and states as largely \nself-interested, satisfaction driven \nentities that seek to maximize some \nkind “utility” outcome? \nYes / No \nIf Yes, then the article is \neither Type 1 or Type 2 \nIf No, then the article is \neither Type 3 or Type 4 \nRefer to Section C2.1.3 \nand C2.1.4 in the \ncodebook for additional \nguidance \n30 \nProvide arguments that supports \nyour response to Q29 \nText \n- \n31 \nProvide some key text passages \nfrom the article that support your \nresponse to Q29 \nText \n- \n32 \nUtility \nDo the analysis incorporate theories \nand conclusions incorporate an \nassessment of individuals, \norganizations and/or states that \nextends beyond self-interested \nsatisfaction seeking motivations? \nYes / No \nIf Yes, then the article is \neither Type 3 or Type 4 \nIf No, then the article is \neither Type 1 or Type 2 \nRefer to Section C2.1.3 \nand C2.1.4 in the \ncodebook for additional \nguidance \n33 \nProvide arguments that supports \nyour response to Q32 \nText \n- \n34 \nProvide some key text passages \nfrom the article that support your \nresponse to Q32 \nText \n- \n35 \nWhat are some key words used in \nthe article that support your problem \ntype classification? \nText \nExamples of key words \nfor Type 1: \n• \nOptimality \n• \nFree rider \n• \nShirking \n• \nCollective action dilemmas \n• \nEfficiency \n• \nOptimization \n• \nInternalizing externalities \nExamples of key words",
+      "pages": [
+        40,
+        41
+      ],
+      "tag": null,
+      "score": 0.5469094514846802
+    },
+    {
+      "text": "thor’s graduating \nuniversity (highest degree) \nText \n14 \nCorresponding author's geographic \nlocation (Highest degree) \n \n15 \nCorresponding author's PhD \ndissertation (Only for Political \nScience) \n \nAs of September 12, 2025 2:27 pm \n \n- 40 -\n# \nParameter \nType of Input (or example) \nComments/ References \n16 \nCorresponding author's research \ninterests (Only for Political Science)\n \n \n \n17 \nCorresponding author's 5-10 \npublication titles (Only for Political \nScience) \n \n18 \nCorresponding author's CV Link \n \n19 \nCategorization of corresponding \nauthor’s educational background \nChoose from drop down \n• \nNatural Sciences \n• \nEngineering \n• \nEnvironmental Studies \n• \nNon-Economic Social Sciences \nand Humanities \n• \nRational Choice Political \nScience \n• \nHistorical Political Science \n• \nPublic Policy \n• \nEconomics \n• \nLaw \n• \nManagement, Administration, & \nFinance \n• \nTransition Studies \n• \nOthers \nDiagnostic questions \n20 \nDoes the article fit in the universe of \nsustainability analyses we seek to \nassess? (Yes / No) \nYes / No \nIf No, remove the article \nfrom the dataset. \nIf Yes, proceed with \ncoding.  \n21 \nResearch methodology of the Article \nChoose from drop down \n• \nQualitative \n• \nQuantitative \n• \nMixed Methods \n- \n22 \nWhat problems or set of problems is \nthe article trying to address? \nText \nExplain your \nunderstanding of the \nproblem being addressed \nin the article \n23 \nProblem contingency \nDo the analysis, conclusions, and \ntheories derived from, and directed \nto, understanding and/or managing \na clearly specified \"on the ground\" \nproblem or class of problems? \nYes / No \nIf Yes, then the article is \neither Type 1 or Type 4 \nIf No, then the article is \neither Type 2 or Type 3 \nRefer to Section C2.1.1 \nand C2.1.2 in the \ncodebook for additional \nguidance \n24 \nProvide arguments that supports \nyour response to Q23 \nText \n- \n25 \nProvide some key text passages \nfrom the article that support your \nresponse to Q23 \nText \n- \n26 \nProblem contingency \nAre the analysis, conc",
+      "pages": [
+        39,
+        40
+      ],
+      "tag": null,
+      "score": 0.5229495763778687
+    },
+    {
+      "text": "ext \nExamples of key words \nfor Type 1: \n• \nOptimality \n• \nFree rider \n• \nShirking \n• \nCollective action dilemmas \n• \nEfficiency \n• \nOptimization \n• \nInternalizing externalities \nExamples of key words \nfor Type 2 \nExamples of key words \nfor Type 3 \nExamples of key words \nfor Type 4 \n36 \nBased on the above, what is the \nproblem type of the article (Type 1, \n2, 3, and 4) \nType 1, 2, 3, and 4 auto-populated \nbased on response to Q23, Q26, Q29, \nQ32 \n \n37 \nDifficulty in coding the article and \nidentifying the problem type \nChoose from drop down \n• \n1 – Very easy \nScore of 1 and 2 can be \nconsidered an ‘explicit’",
+      "pages": [
+        41
+      ],
+      "tag": null,
+      "score": 0.4641951322555542
+    },
+    {
+      "text": "ude ambiguous cases and or cases beyond our universe (i.e. they did not actually \npertain to policy and governance). As a result, we had to regroup and instead encourage coders to identify \neach one according to the two categories, and then to note cases where they simply could not figure out \nhow to best apply the code book (which meant we needed to revise and provide better guidance) and/or be \nclearer about whether a paper was in or out of our universe. For example, we excluded purely science \nbased classes from our review of Yale’s environment school, since most science based classes provided \nbasic knowledge about problems – which might appear to be Type 4- but because they didn’t identify \npolicy or governance solutions – where actually not part of our universe of analyses. \n \nC. Coding Application  \n \nHere was our original approach. One the coder has answered, and justified, the five key questions in \nSection D, they must now input the data into the master spreadsheet in the following setps. \n. \n1) Is the article in the universe we are exploring? \na. If no, discard and code as such \n \nNOTE: the next two questions are opposite sides of the same coin. We are choosing to ask the question in \ntwo different ways, rather than having a “default” coding approach that could mask ambiguity or \nuncertainty. \n \n2) Is the article problem contingent? \na. If yes, code as such in the spreadsheet \n3) Is the article championing generalizable theories and conclusions of behaviour of \nindividuals, organizations and states that are meant to apply beyond the problem or class of \nproblems at hand? \na. If yes, code as such \n \nNOTE: the next two questions are opposite sides of the same coin. We are choosing to ask the question in \ntwo different ways, rather than having a “default” coding approach that could mask ambiguity or \nuncertainty. \n \n4) Is the article championing or assuming self-interest/utility/satisfaction of individuals, \norganizations or states?",
+      "pages": [
+        28
+      ],
+      "tag": null,
+      "score": 0.45317745208740234
+    }
+  ],
+  "document": [
+    {
+      "text": "ustralian Research Council (grant\nnumber DE15100511).\n© 2018 The Authors. Regulation & Governance Published by John Wiley & Sons Australia, Ltd\n16\nJ. van der Heijden\nThe diffusion network perspective\nNotes\n1\nIt should be noted here that these three contextual conditions are related and mutually reinforce each other (Choumert\net al. 2013). Higher levels of economic development, for instance, are often related to higher levels of literacy and educa-\ntion, which typically indicate greater awareness of environmental problems. Higher levels of economic development are\noften also related to higher levels of mandatory environmental legislation, and such legislation may make citizens further\naware of environmental problems and the need to address these; in combination, these factors are likely to contribute to\nsocietal pressure.\n2\nOnline Appendix A in Appendix S1 provides a step-by-step discussion of the various analyses carried out. The number\nand length of the Online Appendixes in Appendix S1 may seem unusual to scholars unfamiliar with QCA. Standard\nQCA practice requires the underlying data, as well as the research steps taken and the choices made, are transparent\n(Ragin 2008; Rihoux & Ragin 2009).\n3\nThe results of the QCA analyses indicate that the cases do not cluster around country characteristics. This suggests that\nthe contextual conditions (i.e. existing legislation and regulation, economic circumstances, and societal pressure) are\nindeed sufﬁciently constant among these countries not to have a noticeable impact on program performance.\n4\nOnline Appendix B in Appendix S1 provides brief summaries of the cases studied.\n5\nFor those less familiar with QCA, conceptually this may resemble a program output rather than program outcome. QCA,\nhowever, strictly uses the term outco",
+      "pages": [
+        16,
+        17
+      ],
+      "tag": null,
+      "score": 0.4195173382759094
+    },
+    {
+      "text": "ides a highly\naccessible discussion of this notation.\n© 2018 The Authors. Regulation & Governance Published by John Wiley & Sons Australia, Ltd\n12\nJ. van der Heijden\nThe diffusion network perspective\nare related to an improvement in participants’ behavior of at least 20 percent since they joined the voluntary\nurban climate program (O2). The solution coverage and solution consistency are again high (both 1.00).\nTable 7 indicates that seven conﬁgurations in three clusters (VII.i–VII.iv, VIII.i, VIII.ii, and IX) are related to a\nfailure to attract at least 15 percent of the pool of prospective participants (~O1). The solution coverage and solu-\ntion consistency are both high (1.00). Table 7 further indicates that two conﬁgurations (X and XI) are related to a\nlack of improvement in participants’ behavior of at least 20 percent since they joined the voluntary urban climate\nprogram (~O2). The solution coverage and solution consistency are high (1.00). Tables 6 and 7 further indicate\ncore causal conditions that must be present or absent in causing the outcome (indicated by large circles in the\ntables), and contributing causal conditions (indicated by small circles in the tables). The core causal conditions in\nTables 6 and 7 present what in QCA is termed the “intermediary solution,” while the core causal conditions com-\nbined with the contributing causal conditions present the “complex solution.” The complex solution is exclusively\nbased on the empirical information at hand. The complex solution can, however, be further simpliﬁed by using\ncounterfactuals. For this study the counterfactuals used were based on the assumptions identiﬁed in the literature\ndiscussed earlier in the article, resulting in the intermediary solution (Fiss 2011). It should be noted that, while the\ninterme",
+      "pages": [
+        12,
+        13
+      ],
+      "tag": null,
+      "score": 0.4130690097808838
+    },
+    {
+      "text": "addressed through a conﬁgurative comparative research\n© 2018 The Authors. Regulation & Governance Published by John Wiley & Sons Australia, Ltd\n4\nJ. van der Heijden\nThe diffusion network perspective\ndesign, building on QCA logic and tools. QCA is grounded in set theory, a branch of mathematical logic that\nallows one to study in detail how causal conditions or conﬁgurations of conditions contribute to outcomes (here,\nthe number of participants attracted, and their changed behavior). QCA is ideally suited to the type of study pre-\nsented in this article, and has been applied in hundreds of policy evaluations (Rihoux et al. 2013; Rihoux & Marx\n2013; van der Heijden 2015a,b). The fundamentals and background of QCA are comprehensively explained and\ndocumented in a series of authoritative textbooks (Goertz & Mahony 2012; Ragin 2008; Rihoux & Ragin 2009;\nSchneider & Wagemann 2012).2\nWhile QCA is often applied as a data analysis method to gain insight into “how different conditions combine\nand whether there is only one combination or several different combinations of conditions (causal recipes) of\ngenerating the same outcome” (Ragin 2008, p. 114), it can also be applied to assess the explanatory reach of heu-\nristic frameworks (Rihoux & Ragin 2009; van der Heijden 2017). In other words, it allows the exploration of dif-\nferent combinations of these conditions to gain an understanding of which conditions or conﬁguration of\nconditions best explains the outcome of interest (Mahoney et al. 2009). This is how QCA is used in the ﬁrst part\nof the empirical section, after which it is applied to understand how (conﬁgurations of ) conditions relate to the\nobserved program performance.\n3.1. Case selection\nA series of 26 voluntary urban climate programs (cases) from Australia, the Netherl",
+      "pages": [
+        4,
+        5
+      ],
+      "tag": null,
+      "score": 0.3949742317199707
+    }
+  ]
+}
