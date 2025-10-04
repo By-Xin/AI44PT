@@ -12,6 +12,7 @@ __pycache__/
 .Python
 env/
 venv/
+.env
 
 # data
 /data/raw(READONLY)/
