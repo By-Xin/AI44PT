@@ -272,41 +272,11 @@ def parse_ai_response(response_text):
         except ValueError:
             continue
 
-    # 方法2：如果结构化解析缺失部分，回退到数字分割
+    # 如果结构化解析不完整，标记为格式错误
     if len(answers) < 16:
-        pattern = r'(?:^|\n)(?:Q?(\d+)[\.\):\s]+)(.*?)(?=\n(?:Q?\d+[\.\):\s])|$)'
-        matches = re.findall(pattern, response_text, re.DOTALL | re.MULTILINE)
-
-        for match in matches:
-            try:
-                q_num = int(match[0])
-                if q_num in answers:
-                    continue
-                answer = match[1].strip()
-                answer = re.sub(r'\n+', ' ', answer)
-                answer = re.sub(r'\s+', ' ', answer)
-                answers[q_num] = answer
-            except ValueError:
-                continue
-
-    # 方法3：仍未解析足够答案时逐行解析
-    if len(answers) < 10:
-        lines = response_text.split('\n')
-        current_q = None
-        current_answer = []
-
-        for line in lines:
-            match = re.match(r'^(?:Q?)?(\d+)[\.\):\s]+(.*)', line.strip())
-            if match:
-                if current_q and current_q not in answers:
-                    answers[current_q] = ' '.join(current_answer).strip()
-                current_q = int(match.group(1))
-                current_answer = [match.group(2)] if match.group(2) else []
-            elif current_q and line.strip():
-                current_answer.append(line.strip())
-
-        if current_q and current_q not in answers:
-            answers[current_q] = ' '.join(current_answer).strip()
+        print(f"    ⚠️ AI response format error: Only parsed {len(answers)}/16 questions from structured template")
+        # 返回空结果，表示解析失败
+        return {}
     
     # 特殊处理：提取Yes/No答案
     for q_num in [1, 3, 6, 9, 12]:
@@ -319,45 +289,6 @@ def parse_ai_response(response_text):
                 answers[q_num] = "No"
     
     return answers
-
-
-# def _self_test_parse_ai_response():
-#     """Lightweight sanity check to verify structured parsing retains citations and multi-line content."""
-#     sample_response = textwrap.dedent(
-#         """
-#         Introductory note that should be ignored.
-#         <BEGIN_4PT_RESPONSE>
-#         <Q1>Yes</Q1>
-#         <Q2>The article evaluates regulatory gaps in carbon market oversight.</Q2>
-#         <Q3>No</Q3>
-#         <Q4>The discussion focuses on theoretical trade-offs without a specific local deployment.</Q4>
-#         <Q5>- "Page 12: Section 3 argues for broader institutional reforms."
-#         - "Page 18: The authors critique existing enforcement models."</Q5>
-#         <Q6>Yes</Q6>
-#         <Q7>They propose a federal standard applicable to emerging markets.</Q7>
-#         <Q8>- "Page 24: Comparative analysis across EU and US systems."</Q8>
-#         <Q9>No</Q9>
-#         <Q10>Stakeholders are portrayed as mission-driven rather than utility driven.</Q10>
-#         <Q11>- "Page 30: Interviews highlight collaborative motivations."</Q11>
-#         <Q12>Yes</Q12>
-#         <Q13>The framework emphasises stewardship and shared governance.</Q13>
-#         <Q14>- "Page 34: Case study on community-led compliance."</Q14>
-#         <Q15>Type 3</Q15>
-#         <Q16>3 - Medium</Q16>
-#         </END_4PT_RESPONSE>
-#         """
-#     ).strip()
-
-#     parsed = parse_ai_response(sample_response)
-
-#     assert len(parsed) == 16, f"Expected 16 answers, got {len(parsed)}"
-#     assert parsed[1] == "Yes", "Q1 should be normalised to 'Yes'"
-#     assert "Page 12" in parsed[5] and "Page 18" in parsed[5], "Q5 should retain multi-line citations"
-#     assert parsed[15] == "Type 3", "Q15 should preserve type formatting"
-#     assert parsed[16] == "3 - Medium", "Q16 should keep difficulty label"
-
-#     print("✅ parse_ai_response self-test passed (structured template parsing)")
-
 
 def get_timestamp():
     """生成时间戳，格式为yymmddhhmmss"""
