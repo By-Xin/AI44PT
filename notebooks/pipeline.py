@@ -18,8 +18,8 @@ load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 
 # === 配置 ===
-# EXCEL_PATH = "/Users/xinby/Desktop/AI44PT_Desktop/data/processed/JRGsamples/JRG article sublist.xlsx"
-EXCEL_PATH = "/Users/xinby/Desktop/AI44PT_Desktop/data/processed/JRGsamples/2sample.xlsx"
+EXCEL_PATH = "/Users/xinby/Desktop/AI44PT_Desktop/data/processed/JRGsamples/JRG article sublist.xlsx"
+# EXCEL_PATH = "/Users/xinby/Desktop/AI44PT_Desktop/data/processed/JRGsamples/2sample.xlsx"
 PDF_FOLDER = "/Users/xinby/Desktop/AI44PT_Desktop/data/processed/JRGsamples/"
 CODEBOOK_MD = "/Users/xinby/Desktop/AI44PT_Desktop/data/processed/TheCodingTask.md"
 # 修改输出路径到根目录/results文件夹
@@ -32,8 +32,8 @@ TEMPERATURE = 0.1  # 设为0.0确保完全确定性结果，0.1为轻微随机�
 AI_RUNS = 3  # 设为3或5可并行记录多次运行结果
 
 # OpenAI API 高级参数配置（仅适用于支持的模型）
-REASONING_EFFORT = "low"  # 推理努力程度: "low", "medium", "high"
-TEXT_VERBOSITY = "low"  # 文本详细程度: "low", "medium", "high"
+REASONING_EFFORT = "high"  # 推理努力程度: "low", "medium", "high"
+TEXT_VERBOSITY = "medium"  # 文本详细程度: "low", "medium", "high"
 
 # Majority Vote 配置
 ENABLE_MAJORITY_VOTE = True  # 是否启用多数投票功能
@@ -41,7 +41,7 @@ OBJECTIVE_QUESTIONS = [1, 3, 6, 9, 12, 15, 16]  # 客观题编号（Yes/No问题
 SUBJECTIVE_QUESTIONS = [2, 4, 5, 7, 8, 10, 11, 13, 14]  # 主观题编号（忽略投票）
 
 # 构建基础source标识（包含模型和参数信息）
-BASE_AI_SOURCE_ID = f"{CLS_MODEL}-temp{TEMPERATURE}-reasoning{REASONING_EFFORT}-verbosity{TEXT_VERBOSITY}"
+BASE_AI_SOURCE_ID = f"{CLS_MODEL}-temp{TEMPERATURE}-reasoning_{REASONING_EFFORT}-verbosity_{TEXT_VERBOSITY}"
 
 # 确保输出目录存在
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -256,7 +256,6 @@ def parse_ai_response(response_text):
     
     answers = {}
 
-    # 方法1：优先解析结构化模板
     structured_block = re.search(r'<BEGIN_4PT_RESPONSE>(.*?)</END_4PT_RESPONSE>', response_text, re.DOTALL | re.IGNORECASE)
     template_body = structured_block.group(1) if structured_block else response_text
 
@@ -315,6 +314,54 @@ def get_column_mapping(df_columns):
             column_mapping[q_num] = col
     
     return column_mapping
+
+
+def calculate_decision_tree_4pt(row, column_mapping):
+    """
+    根据决策树逻辑计算4PT类型
+    
+    决策树逻辑:
+    - Q3=Yes, Q9=Yes -> Type 1
+    - Q3=Yes, Q9=No -> Type 4
+    - Q3=No, Q9=Yes -> Type 2
+    - Q3=No, Q9=No -> Type 3
+    - 其他情况 -> 空字符串
+    
+    Args:
+        row: DataFrame行数据
+        column_mapping: 问题编号到列名的映射
+    
+    Returns:
+        str: 计算出的4PT类型
+    """
+    # 获取Q3和Q9的列名
+    q3_col = column_mapping.get(3)
+    q9_col = column_mapping.get(9)
+    
+    if not q3_col or not q9_col:
+        return ''
+    
+    # 获取Q3和Q9的答案
+    q3_answer = str(row.get(q3_col, '')).strip().lower()
+    q9_answer = str(row.get(q9_col, '')).strip().lower()
+    
+    # 标准化答案
+    q3_yes = 'yes' in q3_answer
+    q3_no = 'no' in q3_answer
+    q9_yes = 'yes' in q9_answer
+    q9_no = 'no' in q9_answer
+    
+    # 应用决策树逻辑
+    if q3_yes and q9_yes:
+        return 'Type 1'
+    elif q3_yes and q9_no:
+        return 'Type 4'
+    elif q3_no and q9_yes:
+        return 'Type 2'
+    elif q3_no and q9_no:
+        return 'Type 3'
+    else:
+        return ''  # 无法确定或答案不明确
 
 
 def perform_majority_vote(ai_results_list, column_mapping):
@@ -727,6 +774,19 @@ def process_batch_analysis():
     # 创建结果DataFrame
     df_results = pd.DataFrame(results)
     
+    # 添加Decision Tree 4PT列
+    print("\n🌳 Calculating Decision Tree 4PT classifications...")
+    decision_tree_col = 'Decision Tree 4PT'
+    df_results[decision_tree_col] = df_results.apply(
+        lambda row: calculate_decision_tree_4pt(row, column_mapping), axis=1
+    )
+    
+    # 统计Decision Tree结果
+    decision_tree_counts = df_results[decision_tree_col].value_counts(dropna=False)
+    print(f"Decision Tree 4PT distribution:")
+    for dt_type, count in decision_tree_counts.items():
+        print(f"  {dt_type if dt_type else '[Empty]'}: {count}")
+    
     # 验证结果
     print("\n" + "=" * 60)
     print("RESULTS VALIDATION")
@@ -750,10 +810,25 @@ def process_batch_analysis():
         print("\nSource distribution:")
         print(source_counts)
     
-    # 调整列顺序，确保与原Excel一致
+    # 调整列顺序，确保与原Excel一致，并将Decision Tree 4PT放在Q15旁边
     original_cols = list(df_human.columns)
     # source和Analysis_Status列放在最前面，便于识别
-    new_cols = ['#', 'source', 'Analysis_Status'] + [col for col in original_cols if col != '#']
+    base_cols = ['#', 'source', 'Analysis_Status']
+    
+    # 找到Q15列的位置，将Decision Tree 4PT列插入到其后
+    q15_col = column_mapping.get(15) if column_mapping else None
+    
+    if q15_col and q15_col in original_cols:
+        # 找到Q15列在原始列中的位置
+        q15_index = original_cols.index(q15_col)
+        # 构建新的列顺序：base_cols + 原始列（到Q15） + Decision Tree 4PT + 原始列（Q15之后）
+        new_cols = (base_cols + 
+                   [col for col in original_cols[:q15_index+1] if col not in base_cols] +
+                   [decision_tree_col] +
+                   [col for col in original_cols[q15_index+1:] if col not in base_cols])
+    else:
+        # 如果没有找到Q15列，就放在最后
+        new_cols = base_cols + [col for col in original_cols if col not in base_cols] + [decision_tree_col]
     
     # 确保所有列都存在
     for col in new_cols:
@@ -822,9 +897,12 @@ def process_batch_analysis():
             6: "Beyond on-ground",
             9: "Utility focus",
             12: "Beyond self-interest",
-            15: "Final Classification",
+            15: "AI Classification",
             16: "Difficulty"
         }
+        
+        # 添加Decision Tree 4PT的对比
+        decision_tree_comparison = True
         
         for q_num, q_desc in comparison_questions.items():
             if q_num in column_mapping:
@@ -843,6 +921,17 @@ def process_batch_analysis():
                         if human_ans and ai_ans and human_ans != 'N/A' and ai_ans != 'N/A':
                             match = "✅ Match" if human_ans.lower() == ai_ans.lower() else "❌ Differ"
                             print(f"  {match}")
+        
+        # 显示Decision Tree 4PT对比
+        if decision_tree_col in human_result.index and decision_tree_col in ai_result.index:
+            human_dt = human_result.get(decision_tree_col, 'N/A')
+            ai_dt = ai_result.get(decision_tree_col, 'N/A')
+            print(f"\nDecision Tree 4PT:")
+            print(f"  Human: {human_dt}")
+            print(f"  AI:    {ai_dt}")
+            if human_dt and ai_dt and human_dt != 'N/A' and ai_dt != 'N/A':
+                match = "✅ Match" if human_dt == ai_dt else "❌ Differ"
+                print(f"  {match}")
     
     # 显示结果DataFrame的前几行验证
     print("\n" + "=" * 60)
@@ -852,9 +941,11 @@ def process_batch_analysis():
     print(f"FIRST {rows_per_article * 2} ROWS OF RESULTS (2 articles × {rows_per_article} rows each)")
     print("=" * 60)
     display_cols = ['#', 'source', 'Analysis_Status', 'Title of the Paper']
-    # 添加Q15（最终分类）如果存在
+    # 添加Q15（AI最终分类）和Decision Tree 4PT如果存在
     if 15 in column_mapping:
         display_cols.append(column_mapping[15])
+    if decision_tree_col in df_results.columns:
+        display_cols.append(decision_tree_col)
     
     print(df_results[display_cols].head(rows_per_article * 2).to_string(max_colwidth=40))
     
