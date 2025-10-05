@@ -41,7 +41,7 @@ OBJECTIVE_QUESTIONS = [1, 3, 6, 9, 12, 15, 16]  # 客观题编号（Yes/No问题
 SUBJECTIVE_QUESTIONS = [2, 4, 5, 7, 8, 10, 11, 13, 14]  # 主观题编号（忽略投票）
 
 # 构建基础source标识（包含模型和参数信息）
-BASE_AI_SOURCE_ID = f"{CLS_MODEL}-temp{TEMPERATURE}"
+BASE_AI_SOURCE_ID = f"{CLS_MODEL}-temp{TEMPERATURE}-reasoning{REASONING_EFFORT}-verbosity{TEXT_VERBOSITY}"
 
 # 确保输出目录存在
 os.makedirs(OUTPUT_DIR, exist_ok=True)
