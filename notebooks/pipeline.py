@@ -31,6 +31,10 @@ CLS_MODEL = "gpt-5-2025-08-07"
 TEMPERATURE = 0.1  # 设为0.0确保完全确定性结果，0.1为轻微随机性
 AI_RUNS = 3  # 设为3或5可并行记录多次运行结果
 
+# OpenAI API 高级参数配置（仅适用于支持的模型）
+REASONING_EFFORT = "high"  # 推理努力程度: "low", "medium", "high"
+TEXT_VERBOSITY = "medium"  # 文本详细程度: "low", "medium", "high"
+
 # 构建基础source标识（包含模型和参数信息）
 BASE_AI_SOURCE_ID = f"{CLS_MODEL}-temp{TEMPERATURE}"
 
@@ -151,7 +155,7 @@ def read_markdown(path: str, heading_pattern: str = r'^#{1,6}\s'):
 
 def analyze_article_fourpt_single(article_pages: list, codebook_pages: list, model: str = CLS_MODEL):
     if not article_pages:
-        return None
+        return None, None
     
     # 将页面内容合并为文本
     article_text = "\n\n".join([f"Page {p['page']}:\n{p['text']}" for p in article_pages])
@@ -185,8 +189,8 @@ You are an expert public policy analyst reviewing sustainability research articl
             response = client.responses.create(
                 model=model,
                 input=prompt,
-                reasoning={"effort": "high"},
-                text={"verbosity": "medium"},
+                reasoning={"effort": REASONING_EFFORT},
+                text={"verbosity": TEXT_VERBOSITY},
             )
             analysis_text = response.output_text
         except AttributeError:
@@ -198,21 +202,23 @@ You are an expert public policy analyst reviewing sustainability research articl
             )
             analysis_text = response.choices[0].message.content
         
-        return analysis_text
+        # 在API调用完成后立即生成时间戳
+        api_timestamp = get_timestamp()
+        return analysis_text, api_timestamp
         
     except Exception as e:
         print(f"  ⚠️ Error in analysis: {e}")
-        return None
+        return None, None
 
 
 def analyze_article_fourpt_multiple(article_pages: list, codebook_pages: list, model: str = CLS_MODEL):
     """使用4PT框架分析文章 - 支持多次独立运行"""
     if AI_RUNS <= 1:
         # 单次运行
-        response = analyze_article_fourpt_single(article_pages, codebook_pages, model)
+        response, timestamp = analyze_article_fourpt_single(article_pages, codebook_pages, model)
         if response:
             answers = parse_ai_response(response)
-            return [answers] if answers else []
+            return [(answers, timestamp)] if answers else []
         return []
     
     # 多次独立运行模式
@@ -221,19 +227,19 @@ def analyze_article_fourpt_multiple(article_pages: list, codebook_pages: list, m
     
     for i in range(AI_RUNS):
         print(f"      Iteration {i+1}/{AI_RUNS}...")
-        response = analyze_article_fourpt_single(article_pages, codebook_pages, model)
+        response, timestamp = analyze_article_fourpt_single(article_pages, codebook_pages, model)
         if response:
             answers = parse_ai_response(response)
             if answers:
-                answer_sets.append(answers)
+                answer_sets.append((answers, timestamp))
             else:
                 print(f"      ⚠️ Iteration {i+1} failed to parse")
-                answer_sets.append(None)  # 保持位置对应
+                answer_sets.append((None, timestamp))  # 保持位置对应，仍然记录时间戳
         else:
             print(f"      ⚠️ Iteration {i+1} failed")
-            answer_sets.append(None)  # 保持位置对应
+            answer_sets.append((None, get_timestamp()))  # 失败时也记录时间戳
     
-    print(f"    ✅ Completed {sum(1 for x in answer_sets if x is not None)}/{AI_RUNS} successful runs")
+    print(f"    ✅ Completed {sum(1 for x, _ in answer_sets if x is not None)}/{AI_RUNS} successful runs")
     
     return answer_sets
 
@@ -349,8 +355,8 @@ def parse_ai_response(response_text):
 
 
 def get_timestamp():
-    """生成时间戳，格式为YYMMDDHHMM"""
-    return datetime.now().strftime('%y%m%d%H%M')
+    """生成时间戳，格式为yymmddhhmmss"""
+    return datetime.now().strftime('%y%m%d%H%M%S')
 
 
 def find_pdf_file(article_id, pdf_folder):
@@ -497,7 +503,7 @@ def process_batch_analysis():
         
         # 处理每次AI运行的结果
         ai_success_count = 0
-        for run_idx, ai_answers in enumerate(ai_answer_sets):
+        for run_idx, (ai_answers, api_timestamp) in enumerate(ai_answer_sets):
             run_source_id = f"{BASE_AI_SOURCE_ID}-run{run_idx+1}" if AI_RUNS > 1 else BASE_AI_SOURCE_ID
             
             # 构建AI结果行 - 从human行复制基本信息
@@ -505,8 +511,8 @@ def process_batch_analysis():
             ai_row['source'] = run_source_id
             
             if ai_answers is None:
-                # 这次运行失败
-                ai_row['Analysis_Status'] = f'ANALYSIS_ERROR_{get_timestamp()}'
+                # 这次运行失败 - 使用API调用时的时间戳
+                ai_row['Analysis_Status'] = f'ANALYSIS_ERROR_{api_timestamp}'
                 # 清空所有问题的答案
                 for q_num in column_mapping.keys():
                     ai_row[column_mapping[q_num]] = ''
@@ -517,8 +523,8 @@ def process_batch_analysis():
                     ai_row['Analysis result (based on column AB and AE)'] = ''
                 print(f"    ⚠️ Run {run_idx+1} failed")
             else:
-                # 这次运行成功
-                ai_row['Analysis_Status'] = f'SUCCESS_{get_timestamp()}'
+                # 这次运行成功 - 使用API调用时的时间戳
+                ai_row['Analysis_Status'] = f'SUCCESS_{api_timestamp}'
                 ai_success_count += 1
                 
                 # 清空原有的human答案
