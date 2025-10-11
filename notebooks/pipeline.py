@@ -37,8 +37,34 @@ TEXT_VERBOSITY = "medium"  # 文本详细程度: "low", "medium", "high"
 
 # Majority Vote 配置
 ENABLE_MAJORITY_VOTE = True  # 是否启用多数投票功能
-OBJECTIVE_QUESTIONS = [1, 3, 6, 9, 12, 15, 16]  # 客观题编号（Yes/No问题和分类问题）
-SUBJECTIVE_QUESTIONS = [2, 4, 5, 7, 8, 10, 11, 13, 14]  # 主观题编号（忽略投票）
+YES_NO_QUESTIONS = [1, 3, 6, 9, 12, 17, 21, 25, 29]
+CONFIDENCE_QUESTIONS = [19, 23, 27, 31]
+LIKERT_QUESTIONS = [20, 24, 28, 32]
+LIKERT_SCALE_LABELS = {
+    1: "1 - Strongly disagree",
+    2: "2 - Somewhat disagree",
+    3: "3 - Neutral",
+    4: "4 - Somewhat agree",
+    5: "5 - Strongly agree",
+}
+OBJECTIVE_QUESTIONS = YES_NO_QUESTIONS + [15, 16]
+SUBJECTIVE_QUESTIONS = [
+    2,
+    4,
+    5,
+    7,
+    8,
+    10,
+    11,
+    13,
+    14,
+    18,
+    22,
+    26,
+    30,
+]
+
+TOTAL_QUESTIONS = 32
 
 # 构建基础source标识（包含模型和参数信息）
 BASE_AI_SOURCE_ID = f"{CLS_MODEL}-temp{TEMPERATURE}-reasoning_{REASONING_EFFORT}-verbosity_{TEXT_VERBOSITY}"
@@ -90,6 +116,38 @@ Please analyze this article using the 4PT framework by answering the following q
 
 16. What is the difficulty level of this classification? (1 - Very Easy / 2 - Easy / 3 - Medium / 4 - Hard / 5 - Very Hard)
 
+17. Based on your analysis, do you think this article should be classified as Type 1? (Yes/No)
+
+18. Why or why not for your Type 1 assessment?
+
+19. On a scale from 0 to 1, how confident are you in the Type 1 assessment? (Provide a decimal between 0 and 1)
+
+20. On a 1-5 agreement scale (1 = Strongly disagree, 5 = Strongly agree), how strongly do you agree that the article fits Type 1?
+
+21. Based on your analysis, do you think this article should be classified as Type 2? (Yes/No)
+
+22. Why or why not for your Type 2 assessment?
+
+23. On a scale from 0 to 1, how confident are you in the Type 2 assessment? (Provide a decimal between 0 and 1)
+
+24. On a 1-5 agreement scale (1 = Strongly disagree, 5 = Strongly agree), how strongly do you agree that the article fits Type 2?
+
+25. Based on your analysis, do you think this article should be classified as Type 3? (Yes/No)
+
+26. Why or why not for your Type 3 assessment?
+
+27. On a scale from 0 to 1, how confident are you in the Type 3 assessment? (Provide a decimal between 0 and 1)
+
+28. On a 1-5 agreement scale (1 = Strongly disagree, 5 = Strongly agree), how strongly do you agree that the article fits Type 3?
+
+29. Based on your analysis, do you think this article should be classified as Type 4? (Yes/No)
+
+30. Why or why not for your Type 4 assessment?
+
+31. On a scale from 0 to 1, how confident are you in the Type 4 assessment? (Provide a decimal between 0 and 1)
+
+32. On a 1-5 agreement scale (1 = Strongly disagree, 5 = Strongly agree), how strongly do you agree that the article fits Type 4?
+
 Please answer each question clearly and provide specific evidence from the text when requested.
 """
 
@@ -116,6 +174,22 @@ STRUCTURED_RESPONSE_INSTRUCTIONS = """
 <Q14>[Answer here]</Q14>
 <Q15>[Answer here]</Q15>
 <Q16>[Answer here]</Q16>
+<Q17>[Answer here]</Q17>
+<Q18>[Answer here]</Q18>
+<Q19>[Answer here]</Q19>
+<Q20>[Answer here]</Q20>
+<Q21>[Answer here]</Q21>
+<Q22>[Answer here]</Q22>
+<Q23>[Answer here]</Q23>
+<Q24>[Answer here]</Q24>
+<Q25>[Answer here]</Q25>
+<Q26>[Answer here]</Q26>
+<Q27>[Answer here]</Q27>
+<Q28>[Answer here]</Q28>
+<Q29>[Answer here]</Q29>
+<Q30>[Answer here]</Q30>
+<Q31>[Answer here]</Q31>
+<Q32>[Answer here]</Q32>
 </END_4PT_RESPONSE>
 """.strip()
 
@@ -272,13 +346,15 @@ def parse_ai_response(response_text):
             continue
 
     # 如果结构化解析不完整，标记为格式错误
-    if len(answers) < 16:
-        print(f"    ⚠️ AI response format error: Only parsed {len(answers)}/16 questions from structured template")
+    if len(answers) < TOTAL_QUESTIONS:
+        print(
+            f"    ⚠️ AI response format error: Only parsed {len(answers)}/{TOTAL_QUESTIONS} questions from structured template"
+        )
         # 返回空结果，表示解析失败
         return {}
-    
+
     # 特殊处理：提取Yes/No答案
-    for q_num in [1, 3, 6, 9, 12]:
+    for q_num in YES_NO_QUESTIONS:
         if q_num in answers:
             text = answers[q_num]
             # 查找Yes或No（忽略大小写）
@@ -286,7 +362,32 @@ def parse_ai_response(response_text):
                 answers[q_num] = "Yes"
             elif re.search(r'\bno\b', text, re.IGNORECASE):
                 answers[q_num] = "No"
-    
+
+    # 特殊处理：确保信心分数在0到1之间（如果提供的话）
+    for q_num in CONFIDENCE_QUESTIONS:
+        if q_num in answers:
+            text = answers[q_num]
+            match = re.search(r"(?:0(?:\.\d+)?|1(?:\.0+)?)", text)
+            if match:
+                value = match.group().strip()
+                # 处理空字符串匹配
+                if value:
+                    try:
+                        num = float(value)
+                        if 0 <= num <= 1:
+                            answers[q_num] = f"{num:.3f}".rstrip('0').rstrip('.')
+                    except ValueError:
+                        continue
+
+    # 特殊处理：Likert量表，标准化为1-5格式
+    for q_num in LIKERT_QUESTIONS:
+        if q_num in answers:
+            text = answers[q_num]
+            match = re.search(r"[1-5]", text)
+            if match:
+                label = LIKERT_SCALE_LABELS.get(int(match.group()))
+                answers[q_num] = label or text.strip()
+
     return answers
 
 def get_timestamp():
@@ -406,7 +507,7 @@ def perform_majority_vote(ai_results_list, column_mapping):
         # 对答案进行标准化处理（特别是Yes/No问题）
         normalized_answers = []
         for answer in answers_for_question:
-            if q_num in [1, 3, 6, 9, 12]:  # Yes/No问题
+            if q_num in YES_NO_QUESTIONS:  # Yes/No问题
                 answer_lower = answer.lower()
                 if 'yes' in answer_lower:
                     normalized_answers.append('Yes')
@@ -486,6 +587,63 @@ def perform_majority_vote(ai_results_list, column_mapping):
             else:
                 majority_answers[q_num] = winner_answer
     
+    # 对信心问题计算平均值
+    for q_num in CONFIDENCE_QUESTIONS:
+        if q_num not in column_mapping:
+            continue
+
+        numeric_values = []
+        for ai_answers in successful_results:
+            value = ai_answers.get(q_num)
+            if value is None:
+                continue
+            try:
+                numeric_values.append(float(str(value).strip()))
+            except ValueError:
+                continue
+
+        if not numeric_values:
+            continue
+
+        avg_value = sum(numeric_values) / len(numeric_values)
+        formatted_avg = f"{avg_value:.3f}".rstrip('0').rstrip('.')
+        majority_answers[q_num] = formatted_avg
+        vote_details[q_num] = {
+            'values': numeric_values,
+            'average': avg_value,
+        }
+
+    # 对Likert量表问题进行平均并四舍五入
+    for q_num in LIKERT_QUESTIONS:
+        if q_num not in column_mapping:
+            continue
+
+        scale_values = []
+        for ai_answers in successful_results:
+            value = ai_answers.get(q_num)
+            if not value:
+                continue
+
+            # 尝试提取数字等级
+            match = re.search(r"[1-5]", str(value))
+            if match:
+                try:
+                    scale_values.append(int(match.group()))
+                except ValueError:
+                    continue
+
+        if not scale_values:
+            continue
+
+        avg_scale = sum(scale_values) / len(scale_values)
+        rounded_level = max(1, min(5, int(math.floor(avg_scale + 0.5))))
+        majority_answers[q_num] = LIKERT_SCALE_LABELS.get(rounded_level, str(rounded_level))
+        vote_details[q_num] = {
+            'values': scale_values,
+            'average': avg_scale,
+            'rounded': rounded_level,
+        }
+
     return majority_answers, vote_details
 
 
@@ -756,7 +914,7 @@ def process_batch_analysis():
                 # 打印投票结果摘要
                 print(f"    ✅ Majority vote completed")
                 for q_num, answer in majority_results.items():
-                    if q_num in [1, 3, 6, 9, 12, 15, 16]:  # 只打印关键问题
+                    if q_num in YES_NO_QUESTIONS or q_num in [15, 16]:  # 只打印关键问题
                         vote_count_info = vote_details.get(q_num, {}).get('vote_counts', {})
                         print(f"      Q{q_num}: {answer} (votes: {vote_count_info})")
         
@@ -898,7 +1056,19 @@ def process_batch_analysis():
             9: "Utility focus",
             12: "Beyond self-interest",
             15: "AI Classification",
-            16: "Difficulty"
+            16: "Difficulty",
+            17: "Type 1?",
+            21: "Type 2?",
+            25: "Type 3?",
+            29: "Type 4?",
+            19: "Type 1 confidence",
+            23: "Type 2 confidence",
+            27: "Type 3 confidence",
+            31: "Type 4 confidence",
+            20: "Type 1 agreement",
+            24: "Type 2 agreement",
+            28: "Type 3 agreement",
+            32: "Type 4 agreement",
         }
         
         # 添加Decision Tree 4PT的对比
@@ -917,7 +1087,7 @@ def process_batch_analysis():
                     print(f"  AI:    {ai_ans[:100] if ai_ans else 'N/A'}")
                     
                     # 对于Yes/No问题，标记是否一致
-                    if q_num in [1, 3, 6, 9, 12]:
+                    if q_num in YES_NO_QUESTIONS:
                         if human_ans and ai_ans and human_ans != 'N/A' and ai_ans != 'N/A':
                             match = "✅ Match" if human_ans.lower() == ai_ans.lower() else "❌ Differ"
                             print(f"  {match}")
@@ -962,7 +1132,7 @@ def process_batch_analysis():
                 first_majority = majority_vote_rows.iloc[0]
                 article_id = first_majority['#']
                 print(f"\n   Example (Article #{article_id}):")
-                for q_num in [1, 3, 6, 9, 12, 15, 16]:
+                for q_num in YES_NO_QUESTIONS + [15, 16]:
                     if q_num in column_mapping:
                         col_name = column_mapping[q_num]
                         answer = first_majority.get(col_name, 'N/A')
@@ -976,6 +1146,8 @@ def process_batch_analysis():
     print(f"Majority Vote Enabled: {ENABLE_MAJORITY_VOTE}")
     print(f"Objective Questions (voted): {OBJECTIVE_QUESTIONS}")
     print(f"Subjective Questions (ignored): {SUBJECTIVE_QUESTIONS}")
+    print(f"Confidence Questions (averaged): {CONFIDENCE_QUESTIONS}")
+    print(f"Likert Scale Questions (averaged): {LIKERT_QUESTIONS}")
     print(f"AI Runs per Article: {AI_RUNS}")
     print(f"Minimum Successful Runs for Voting: 2")
     
