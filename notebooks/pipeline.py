@@ -26,6 +26,13 @@ CODEBOOK_MD = "/Users/xinby/Desktop/AI44PT_Desktop/data/processed/TheCodingTask.
 OUTPUT_DIR = "/Users/xinby/Desktop/AI44PT_Desktop/results/"
 OUTPUT_EXCEL = os.path.join(OUTPUT_DIR, f"analysis_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx")
 
+# === 文章处理数量控制 ===
+# 控制处理多少篇文章
+# - 设为 None 或 0: 处理所有文章
+# - 设为正整数 N: 只处理前 N 篇文章
+# - 设为负整数 -N: 只处理后 N 篇文章
+PROCESS_ARTICLE_LIMIT = None  # 默认处理所有文章
+
 CLS_MODEL = "gpt-5-2025-08-07"
 # 分析参数配置
 TEMPERATURE = 0.1  # 设为0.0确保完全确定性结果，0.1为轻微随机性
@@ -649,11 +656,24 @@ def perform_majority_vote(ai_results_list, column_mapping):
 
 def process_batch_analysis():
     """批量处理Excel中的所有文章"""
-    
+
     # 读取Excel
     print(f"Reading Excel from: {EXCEL_PATH}")
     df_human = pd.read_excel(EXCEL_PATH)
-    print(f"Found {len(df_human)} articles to process")
+    print(f"Found {len(df_human)} articles in Excel")
+
+    # 根据 PROCESS_ARTICLE_LIMIT 配置限制处理的文章数量
+    if PROCESS_ARTICLE_LIMIT is not None and PROCESS_ARTICLE_LIMIT != 0:
+        if PROCESS_ARTICLE_LIMIT > 0:
+            # 正数：处理前N篇
+            df_human = df_human.head(PROCESS_ARTICLE_LIMIT)
+            print(f"📌 Limited to process first {PROCESS_ARTICLE_LIMIT} articles")
+        else:
+            # 负数：处理后N篇
+            df_human = df_human.tail(-PROCESS_ARTICLE_LIMIT)
+            print(f"📌 Limited to process last {-PROCESS_ARTICLE_LIMIT} articles")
+
+    print(f"Will process {len(df_human)} articles")
     
     # 获取列名映射（基于[Q]标注）
     column_mapping = get_column_mapping(df_human.columns)
