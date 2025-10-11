@@ -27,18 +27,56 @@ OUTPUT_DIR = "/Users/xinby/Desktop/AI44PT_Desktop/results/"
 OUTPUT_EXCEL = os.path.join(OUTPUT_DIR, f"analysis_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx")
 
 CLS_MODEL = "gpt-5-2025-08-07"
+# 调试模式：手动切换为True以限制样本并降低模型开销
+DEBUG_MODE = True
+
 # 分析参数配置
 TEMPERATURE = 0.1  # 设为0.0确保完全确定性结果，0.1为轻微随机性
-AI_RUNS = 3  # 设为3或5可并行记录多次运行结果
+DEFAULT_AI_RUNS = 3  # 设为3或5可并行记录多次运行结果
 
 # OpenAI API 高级参数配置（仅适用于支持的模型）
-REASONING_EFFORT = "high"  # 推理努力程度: "low", "medium", "high"
-TEXT_VERBOSITY = "medium"  # 文本详细程度: "low", "medium", "high"
+DEFAULT_REASONING_EFFORT = "high"  # 推理努力程度: "low", "medium", "high"
+DEFAULT_TEXT_VERBOSITY = "medium"  # 文本详细程度: "low", "medium", "high"
+
+# 调试模式下覆盖关键参数，便于快速测试
+if DEBUG_MODE:
+    AI_RUNS = 2
+    REASONING_EFFORT = "low"
+    TEXT_VERBOSITY = "low"
+else:
+    AI_RUNS = DEFAULT_AI_RUNS
+    REASONING_EFFORT = DEFAULT_REASONING_EFFORT
+    TEXT_VERBOSITY = DEFAULT_TEXT_VERBOSITY
 
 # Majority Vote 配置
 ENABLE_MAJORITY_VOTE = True  # 是否启用多数投票功能
-OBJECTIVE_QUESTIONS = [1, 3, 6, 9, 12, 15, 16]  # 客观题编号（Yes/No问题和分类问题）
-SUBJECTIVE_QUESTIONS = [2, 4, 5, 7, 8, 10, 11, 13, 14]  # 主观题编号（忽略投票）
+OBJECTIVE_QUESTIONS = [1, 3, 6, 9, 12, 15, 16, 17, 20, 23, 26]  # 客观题编号（Yes/No问题和分类问题）
+SUBJECTIVE_QUESTIONS = [2, 4, 5, 7, 8, 10, 11, 13, 14, 18, 19, 21, 22, 24, 25, 27, 28]  # 主观题编号（忽略投票）
+TOTAL_QUESTIONS = 28
+TYPE_CLASS_YN_QUESTIONS = [17, 20, 23, 26]
+TYPE_CONFIDENCE_QUESTIONS = [18, 21, 24, 27]
+TYPE_LIKERT_QUESTIONS = [19, 22, 25, 28]
+LIKERT_LABELS = {
+    1: "Strongly disagree",
+    2: "Somewhat disagree",
+    3: "Neutral",
+    4: "Somewhat agree",
+    5: "Strongly agree",
+}
+ADDITIONAL_QUESTION_COLUMNS = {
+    17: "Type 1 classification support (Yes/No) [Q17]",
+    18: "Type 1 classification confidence (0-1) [Q18]",
+    19: "Type 1 classification Likert (1-5) [Q19]",
+    20: "Type 2 classification support (Yes/No) [Q20]",
+    21: "Type 2 classification confidence (0-1) [Q21]",
+    22: "Type 2 classification Likert (1-5) [Q22]",
+    23: "Type 3 classification support (Yes/No) [Q23]",
+    24: "Type 3 classification confidence (0-1) [Q24]",
+    25: "Type 3 classification Likert (1-5) [Q25]",
+    26: "Type 4 classification support (Yes/No) [Q26]",
+    27: "Type 4 classification confidence (0-1) [Q27]",
+    28: "Type 4 classification Likert (1-5) [Q28]",
+}
 
 # 构建基础source标识（包含模型和参数信息）
 BASE_AI_SOURCE_ID = f"{CLS_MODEL}-temp{TEMPERATURE}-reasoning_{REASONING_EFFORT}-verbosity_{TEXT_VERBOSITY}"
@@ -90,7 +128,31 @@ Please analyze this article using the 4PT framework by answering the following q
 
 16. What is the difficulty level of this classification? (1 - Very Easy / 2 - Easy / 3 - Medium / 4 - Hard / 5 - Very Hard)
 
-Please answer each question clearly and provide specific evidence from the text when requested.
+17. Based on your analysis, do you think this article should be classified as Type 1? (Yes/No) Why or why not. Provide your answer as "Yes - ..." or "No - ..." followed by a short justification.
+
+18. What is your confidence that this article should be classified as Type 1? Respond with a probability between 0 and 1 (two decimal places) followed by a brief rationale, e.g., "0.82 - rationale".
+
+19. On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 1? Provide the number, the matching label, and a short justification.
+
+20. Based on your analysis, do you think this article should be classified as Type 2? (Yes/No) Why or why not. Provide your answer as "Yes - ..." or "No - ..." followed by a short justification.
+
+21. What is your confidence that this article should be classified as Type 2? Respond with a probability between 0 and 1 (two decimal places) followed by a brief rationale, e.g., "0.82 - rationale".
+
+22. On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 2? Provide the number, the matching label, and a short justification.
+
+23. Based on your analysis, do you think this article should be classified as Type 3? (Yes/No) Why or why not. Provide your answer as "Yes - ..." or "No - ..." followed by a short justification.
+
+24. What is your confidence that this article should be classified as Type 3? Respond with a probability between 0 and 1 (two decimal places) followed by a brief rationale, e.g., "0.82 - rationale".
+
+25. On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 3? Provide the number, the matching label, and a short justification.
+
+26. Based on your analysis, do you think this article should be classified as Type 4? (Yes/No) Why or why not. Provide your answer as "Yes - ..." or "No - ..." followed by a short justification.
+
+27. What is your confidence that this article should be classified as Type 4? Respond with a probability between 0 and 1 (two decimal places) followed by a brief rationale, e.g., "0.82 - rationale".
+
+28. On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 4? Provide the number, the matching label, and a short justification.
+
+Please answer each question clearly and provide specific evidence or reasoning when requested.
 """
 
 STRUCTURED_RESPONSE_INSTRUCTIONS = """
@@ -116,6 +178,18 @@ STRUCTURED_RESPONSE_INSTRUCTIONS = """
 <Q14>[Answer here]</Q14>
 <Q15>[Answer here]</Q15>
 <Q16>[Answer here]</Q16>
+<Q17>[Answer here]</Q17>
+<Q18>[Answer here]</Q18>
+<Q19>[Answer here]</Q19>
+<Q20>[Answer here]</Q20>
+<Q21>[Answer here]</Q21>
+<Q22>[Answer here]</Q22>
+<Q23>[Answer here]</Q23>
+<Q24>[Answer here]</Q24>
+<Q25>[Answer here]</Q25>
+<Q26>[Answer here]</Q26>
+<Q27>[Answer here]</Q27>
+<Q28>[Answer here]</Q28>
 </END_4PT_RESPONSE>
 """.strip()
 
@@ -272,13 +346,13 @@ def parse_ai_response(response_text):
             continue
 
     # 如果结构化解析不完整，标记为格式错误
-    if len(answers) < 16:
-        print(f"    ⚠️ AI response format error: Only parsed {len(answers)}/16 questions from structured template")
+    if len(answers) < TOTAL_QUESTIONS:
+        print(f"    ⚠️ AI response format error: Only parsed {len(answers)}/{TOTAL_QUESTIONS} questions from structured template")
         # 返回空结果，表示解析失败
         return {}
     
     # 特殊处理：提取Yes/No答案
-    for q_num in [1, 3, 6, 9, 12]:
+    for q_num in [1, 3, 6, 9, 12, *TYPE_CLASS_YN_QUESTIONS]:
         if q_num in answers:
             text = answers[q_num]
             # 查找Yes或No（忽略大小写）
@@ -286,6 +360,36 @@ def parse_ai_response(response_text):
                 answers[q_num] = "Yes"
             elif re.search(r'\bno\b', text, re.IGNORECASE):
                 answers[q_num] = "No"
+
+    # 标准化概率回答
+    for q_num in TYPE_CONFIDENCE_QUESTIONS:
+        if q_num in answers:
+            text = answers[q_num]
+            match = re.match(r'\s*(0?\.\d+|1(?:\.0+)?)', text)
+            if match:
+                prob = float(match.group(1))
+                prob = min(max(prob, 0.0), 1.0)
+                remainder = text[match.end():].strip(" -:")
+                answers[q_num] = f"{prob:.2f}" + (f" - {remainder}" if remainder else "")
+
+    # 标准化Likert量表回答
+    for q_num in TYPE_LIKERT_QUESTIONS:
+        if q_num in answers:
+            text = answers[q_num]
+            match = re.match(r'\s*([1-5])', text)
+            if match:
+                rating = int(match.group(1))
+                rating = min(max(rating, 1), 5)
+                remainder = text[match.end():].strip(" -:;")
+                label = LIKERT_LABELS.get(rating, "")
+                if remainder:
+                    if label and label.lower() not in remainder.lower():
+                        formatted_remainder = f"{label}; {remainder}"
+                    else:
+                        formatted_remainder = remainder
+                    answers[q_num] = f"{rating} - {formatted_remainder}"
+                else:
+                    answers[q_num] = f"{rating} - {label}" if label else f"{rating}"
     
     return answers
 
@@ -406,7 +510,7 @@ def perform_majority_vote(ai_results_list, column_mapping):
         # 对答案进行标准化处理（特别是Yes/No问题）
         normalized_answers = []
         for answer in answers_for_question:
-            if q_num in [1, 3, 6, 9, 12]:  # Yes/No问题
+            if q_num in [1, 3, 6, 9, 12] or q_num in TYPE_CLASS_YN_QUESTIONS:  # Yes/No问题
                 answer_lower = answer.lower()
                 if 'yes' in answer_lower:
                     normalized_answers.append('Yes')
@@ -496,6 +600,23 @@ def process_batch_analysis():
     print(f"Reading Excel from: {EXCEL_PATH}")
     df_human = pd.read_excel(EXCEL_PATH)
     print(f"Found {len(df_human)} articles to process")
+
+    if DEBUG_MODE:
+        print("⚙️ Debug mode active: limiting to first 2 articles, AI runs=2, reasoning effort=low, verbosity=low")
+        df_human = df_human.head(2).copy()
+        print(f"Processing subset size: {len(df_human)}")
+
+    # 确保新增的问题列存在（若原始Excel中没有则创建空列）
+    added_columns = []
+    for q_num in sorted(ADDITIONAL_QUESTION_COLUMNS.keys()):
+        col_name = ADDITIONAL_QUESTION_COLUMNS[q_num]
+        if col_name not in df_human.columns:
+            df_human[col_name] = ''
+            added_columns.append(col_name)
+    if added_columns:
+        print(f"Added missing columns for new questions: {len(added_columns)}")
+        for col_name in added_columns:
+            print(f"  + {col_name}")
     
     # 获取列名映射（基于[Q]标注）
     column_mapping = get_column_mapping(df_human.columns)
