@@ -17,6 +17,10 @@ from dotenv import load_dotenv
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 
+# === DEBUG MODE 配置 ===
+# 开启DEBUG模式会自动设置: REASONING_EFFORT=low, TEXT_VERBOSITY=low, PROCESS_ARTICLE_LIMIT=2, AI_RUNS=2
+DEBUG_MODE = False  # 设为True启用调试模式
+
 # === 配置 ===
 EXCEL_PATH = "/Users/xinby/Desktop/AI44PT_Desktop/data/processed/JRGsamples/JRG article sublist.xlsx"
 # EXCEL_PATH = "/Users/xinby/Desktop/AI44PT_Desktop/data/processed/JRGsamples/2sample.xlsx"
@@ -28,10 +32,7 @@ OUTPUT_EXCEL = os.path.join(OUTPUT_DIR, f"analysis_results_{datetime.now().strft
 
 # === 文章处理数量控制 ===
 # 控制处理多少篇文章
-# - 设为 None 或 0: 处理所有文章
-# - 设为正整数 N: 只处理前 N 篇文章
-# - 设为负整数 -N: 只处理后 N 篇文章
-PROCESS_ARTICLE_LIMIT = None  # 默认处理所有文章
+PROCESS_ARTICLE_LIMIT = None  # None: 处理所有文章；N: 处理前N篇；-N: 处理后N篇
 
 CLS_MODEL = "gpt-5-2025-08-07"
 # 分析参数配置
@@ -41,6 +42,14 @@ AI_RUNS = 3  # 设为3或5可并行记录多次运行结果
 # OpenAI API 高级参数配置（仅适用于支持的模型）
 REASONING_EFFORT = "high"  # 推理努力程度: "low", "medium", "high"
 TEXT_VERBOSITY = "medium"  # 文本详细程度: "low", "medium", "high"
+
+# === 应用DEBUG模式设置 ===
+if DEBUG_MODE:
+    REASONING_EFFORT = "low"
+    TEXT_VERBOSITY = "low"
+    PROCESS_ARTICLE_LIMIT = 2
+    AI_RUNS = 2
+    print("🐛 DEBUG MODE ENABLED: effort=low, verbosity=low, articles=2, runs=2")
 
 # Majority Vote 配置
 ENABLE_MAJORITY_VOTE = True  # 是否启用多数投票功能
