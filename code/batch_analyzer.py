@@ -20,6 +20,11 @@ from voting import MajorityVoter, ConsensusAnalyzer, DecisionTreeClassifier
 class BatchAnalyzer:
     """批量分析协调器"""
 
+    AI_AGREEMENT_COL = 'AI run agreement (Q15)'
+    HUMAN_VS_AI_COL = 'Human vs AI (Q15)'
+    TYPE_SUMMARY_COL = 'Type summary (Q15, Decision Tree, Consensus)'
+    HUMAN_VS_CONSENSUS_COL = 'Human vs AI (consensus)'
+
     def __init__(self, config: Config = None):
         """
         初始化批量分析器
@@ -523,11 +528,15 @@ You are an expert public policy analyst reviewing sustainability research articl
             title = row.get('Title of the Paper', 'Unknown')
 
             print(f"\n[{idx+1}/{total_articles}] Parsing article #{article_id}: {title[:50]}...")
+            q15_col = column_mapping.get(15)
 
             # 添加human结果行
             human_row = row.to_dict()
             human_row['source'] = 'human'
             human_row['Analysis_Status'] = 'HUMAN_ORIGINAL'
+            human_row[self.AI_AGREEMENT_COL] = ''
+            human_row[self.HUMAN_VS_AI_COL] = ''
+            human_row[self.HUMAN_VS_CONSENSUS_COL] = ''
             results.append(human_row)
 
             article_records = records_by_article.get(article_id, [])
@@ -588,15 +597,48 @@ You are an expert public policy analyst reviewing sustainability research articl
 
                 results.append(ai_row)
 
+            # 计算投票细节以评估一致性
+            majority_results = {}
+            vote_details = {}
+            numeric_stats = {}
+            if ai_success_count > 0:
+                majority_results, vote_details, numeric_stats = self.voter.perform_vote(
+                    ai_answer_sets, column_mapping
+                )
+
+            ai_agreement_label = self._summarize_q15_agreement(vote_details, ai_success_count)
+            if ai_agreement_label:
+                human_row[self.AI_AGREEMENT_COL] = ai_agreement_label
+
             # 多数票
             if (self.config.ENABLE_MAJORITY_VOTE and
                 self.config.get_ai_runs() > 1 and
                 ai_success_count >= 2):
-                majority_row = self._create_majority_vote_row(
-                    row, ai_answer_sets, column_mapping
+                vote_output = self._create_majority_vote_row(
+                    row, ai_answer_sets, column_mapping,
+                    majority_results, vote_details, numeric_stats
                 )
-                if majority_row:
+                if vote_output:
+                    majority_row, majority_metadata = vote_output
+                    majority_row[self.AI_AGREEMENT_COL] = ai_agreement_label
                     results.append(majority_row)
+
+                    human_value = human_row.get(q15_col, '') if q15_col else ''
+                    ai_value = majority_row.get(q15_col, '') if q15_col else ''
+                    human_vs_ai = self._compare_human_vs_ai_q15(human_value, ai_value)
+                    human_row[self.HUMAN_VS_AI_COL] = human_vs_ai
+                    majority_row[self.HUMAN_VS_AI_COL] = human_vs_ai
+                else:
+                    human_row[self.HUMAN_VS_AI_COL] = 'No AI majority'
+            else:
+                if not self.config.ENABLE_MAJORITY_VOTE:
+                    human_row[self.HUMAN_VS_AI_COL] = 'Majority vote disabled'
+                elif self.config.get_ai_runs() <= 1:
+                    human_row[self.HUMAN_VS_AI_COL] = 'Majority vote not applicable (single run)'
+                elif ai_success_count < 2:
+                    human_row[self.HUMAN_VS_AI_COL] = 'Majority vote unavailable (insufficient runs)'
+                else:
+                    human_row[self.HUMAN_VS_AI_COL] = 'No AI majority'
 
             if ai_success_count > 0:
                 self.stats['success'] += 1
@@ -657,6 +699,9 @@ You are an expert public policy analyst reviewing sustainability research articl
             # 清空答案
             for q_num in column_mapping.keys():
                 ai_row[column_mapping[q_num]] = ''
+            ai_row[self.AI_AGREEMENT_COL] = ''
+            ai_row[self.HUMAN_VS_AI_COL] = ''
+            ai_row[self.HUMAN_VS_CONSENSUS_COL] = ''
             rows.append(ai_row)
         return rows
 
@@ -685,20 +730,22 @@ You are an expert public policy analyst reviewing sustainability research articl
                 if q_num in ai_answers:
                     ai_row[col_name] = ai_answers[q_num]
 
+        ai_row[self.AI_AGREEMENT_COL] = ''
+        ai_row[self.HUMAN_VS_AI_COL] = ''
+        ai_row[self.HUMAN_VS_CONSENSUS_COL] = ''
         return ai_row
 
     def _create_majority_vote_row(
         self,
         row: pd.Series,
         ai_answer_sets: List[Tuple],
-        column_mapping: Dict[int, str]
-    ) -> Optional[Dict]:
+        column_mapping: Dict[int, str],
+        majority_results: Dict[int, str],
+        vote_details: Dict[int, Dict],
+        numeric_stats: Dict[int, Dict]
+    ) -> Optional[Tuple[Dict, Dict]]:
         """创建多数投票结果行"""
         print(f"  🗳️ Performing majority vote...")
-        majority_results, vote_details, numeric_stats = self.voter.perform_vote(
-            ai_answer_sets, column_mapping
-        )
-
         if not majority_results and not numeric_stats:
             return None
 
@@ -739,7 +786,140 @@ You are an expert public policy analyst reviewing sustainability research articl
                 majority_row[column_mapping[q_num]] = '[SUBJECTIVE - NO VOTE]'
 
         print(f"    ✅ Majority vote completed")
-        return majority_row
+        majority_row[self.AI_AGREEMENT_COL] = ''
+        majority_row[self.HUMAN_VS_AI_COL] = ''
+        majority_row[self.HUMAN_VS_CONSENSUS_COL] = ''
+        metadata = {
+            "majority_results": majority_results,
+            "vote_details": vote_details,
+            "numeric_stats": numeric_stats,
+        }
+        return majority_row, metadata
+
+    def _summarize_q15_agreement(
+        self,
+        vote_details: Dict[int, Dict],
+        total_runs: int
+    ) -> str:
+        """汇总Q15的AI一致性情况"""
+        detail = vote_details.get(15)
+        if detail is None or not detail.get('vote_counts'):
+            if total_runs <= 1:
+                return 'Insufficient data'
+            return 'No Q15 data'
+
+        counts = detail['vote_counts']
+        sorted_counts = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+        top_answer, top_count = sorted_counts[0]
+        total_votes = sum(counts.values())
+        if total_votes == 0:
+            return 'No Q15 data'
+
+        tie_count = sum(1 for _, cnt in counts.items() if cnt == top_count)
+        if tie_count > 1:
+            detail_text = ", ".join(f"{ans}:{cnt}" for ans, cnt in sorted_counts)
+            return f"Split consensus ({detail_text})"
+
+        ratio = top_count / total_votes
+        if ratio == 1.0:
+            label = "Unanimous"
+        elif ratio >= 0.75:
+            label = "Strong majority"
+        elif ratio > 0.5:
+            label = "Simple majority"
+        else:
+            label = "Plurality"
+
+        detail_text = ", ".join(f"{ans}:{cnt}" for ans, cnt in sorted_counts)
+        return f"{label} ({detail_text})"
+
+    def _compare_human_vs_ai_q15(self, human_value: str, ai_value: str) -> str:
+        """比较人类与多数投票在Q15上的一致性"""
+        human_value = human_value or ''
+        ai_value = ai_value or ''
+
+        if not ai_value:
+            return 'AI majority missing'
+
+        normalized_human = self.voter._normalize_type_for_vote(human_value) if human_value else ''
+        normalized_ai = self.voter._normalize_type_for_vote(ai_value) if ai_value else ''
+
+        if not human_value:
+            return f"Human missing (AI={normalized_ai or ai_value})"
+
+        if not normalized_ai:
+            return "AI majority missing"
+
+        if not normalized_human:
+            return f"Human unclassified (AI={normalized_ai})"
+
+        if normalized_human == normalized_ai:
+            return f"Match ({normalized_ai})"
+
+        return f"Mismatch (Human={normalized_human}, AI={normalized_ai})"
+
+    def _compare_human_vs_consensus(
+        self,
+        row: pd.Series,
+        column_mapping: Dict[int, str],
+        consensus_col: str
+    ) -> str:
+        """比较人类与共识列在Q15上的一致性"""
+        consensus_value = str(row.get(consensus_col, '') or '').strip()
+        if not consensus_value:
+            return 'Consensus missing'
+
+        lower_val = consensus_value.lower()
+        if 'no data' in lower_val:
+            return 'Consensus unavailable (no data)'
+        if 'no clear' in lower_val:
+            return 'Consensus unclear'
+
+        q15_col = column_mapping.get(15)
+        human_raw = str(row.get(q15_col, '') or '').strip() if q15_col else ''
+        if not human_raw:
+            return f"Human missing (Consensus={consensus_value})"
+
+        normalized_human = self.voter._normalize_type_for_vote(human_raw)
+        if not normalized_human:
+            return f"Human unclassified (Consensus={consensus_value})"
+
+        type_matches = re.findall(r'Type\s*([1-4])', consensus_value, flags=re.IGNORECASE)
+        if not type_matches:
+            return f"Consensus text: {consensus_value}"
+
+        consensus_types = sorted({f"Type {match}" for match in type_matches})
+        if normalized_human in consensus_types:
+            if len(consensus_types) == 1:
+                return f"Match ({normalized_human})"
+            return f"Match within tie ({normalized_human}; Consensus={', '.join(consensus_types)})"
+
+        return f"Mismatch (Human={normalized_human}, Consensus={', '.join(consensus_types)})"
+
+    def _compose_type_summary(
+        self,
+        row: pd.Series,
+        column_mapping: Dict[int, str],
+        decision_tree_col: str,
+        consensus_col: str
+    ) -> str:
+        """整合Q15、决策树和共识结果"""
+        parts = []
+        q15_col = column_mapping.get(15)
+        if q15_col:
+            q15_val = str(row.get(q15_col, '') or '').strip()
+            if q15_val:
+                parts.append(f"Q15={q15_val}")
+
+        decision_val = str(row.get(decision_tree_col, '') or '').strip()
+        if decision_val:
+            parts.append(f"DecisionTree={decision_val}")
+
+        consensus_val = str(row.get(consensus_col, '') or '').strip()
+        if consensus_val:
+            parts.append(f"Consensus={consensus_val}")
+
+        return " | ".join(parts)
 
     def _get_run_source_id(self, run_idx: int) -> str:
         """获取运行source ID"""
@@ -767,6 +947,19 @@ You are an expert public policy analyst reviewing sustainability research articl
             lambda row: self.consensus_analyzer.derive_consensus(row, column_mapping),
             axis=1
         )
+        summary_col = self.TYPE_SUMMARY_COL
+        df[summary_col] = df.apply(
+            lambda row: self._compose_type_summary(
+                row, column_mapping, decision_tree_col, type_consensus_col
+            ),
+            axis=1
+        )
+        df[self.HUMAN_VS_CONSENSUS_COL] = df.apply(
+            lambda row: self._compare_human_vs_consensus(
+                row, column_mapping, type_consensus_col
+            ),
+            axis=1
+        )
 
         return df
 
@@ -781,25 +974,41 @@ You are an expert public policy analyst reviewing sustainability research articl
         base_cols = ['#', 'source', 'Analysis_Status']
         decision_tree_col = 'Decision Tree 4PT'
         type_consensus_col = 'Type consensus (Q17-Q28 summary)'
+        extra_cols = [
+            decision_tree_col,
+            type_consensus_col,
+            self.AI_AGREEMENT_COL,
+            self.HUMAN_VS_AI_COL,
+            self.HUMAN_VS_CONSENSUS_COL,
+            self.TYPE_SUMMARY_COL,
+        ]
 
         q15_col = column_mapping.get(15)
         original_cols = list(df_human.columns)
 
         if q15_col and q15_col in original_cols:
             q15_index = original_cols.index(q15_col)
-            new_cols = (base_cols +
-                       [col for col in original_cols[:q15_index+1] if col not in base_cols] +
-                       [decision_tree_col, type_consensus_col] +
-                       [col for col in original_cols[q15_index+1:] if col not in base_cols])
+            prefix = [col for col in original_cols[:q15_index+1] if col not in base_cols]
+            suffix = [col for col in original_cols[q15_index+1:] if col not in base_cols]
+            new_cols = base_cols + prefix + extra_cols + [col for col in suffix if col not in extra_cols]
         else:
-            new_cols = base_cols + [col for col in original_cols if col not in base_cols] + [decision_tree_col, type_consensus_col]
+            remaining = [col for col in original_cols if col not in base_cols]
+            new_cols = base_cols + remaining + extra_cols
+
+        # 去重同时保持顺序
+        seen = set()
+        ordered_cols = []
+        for col in new_cols:
+            if col not in seen:
+                ordered_cols.append(col)
+                seen.add(col)
 
         # 确保所有列存在
-        for col in new_cols:
+        for col in ordered_cols:
             if col not in df.columns:
                 df[col] = ''
 
-        final_cols = [col for col in new_cols if col in df.columns]
+        final_cols = [col for col in ordered_cols if col in df.columns]
         df = df[final_cols]
 
         # 排序

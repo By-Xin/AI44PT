@@ -126,6 +126,11 @@ The system is organized into specialized modules following single-responsibility
 - `source` column distinguishes rows (e.g., "human", "gpt-5-...-run1", "...-majority-vote")
 - `Analysis_Status` tracks success/failure with timestamps
 - Decision Tree 4PT and Type Consensus columns appear next to Q15 for easy comparison
+- Additional review columns:
+  - `AI run agreement (Q15)` shows how strongly independent runs converged on a single type.
+  - `Human vs AI (Q15)` highlights alignment (or conflict) between the majority vote and the human-coded answer.
+  - `Human vs AI (consensus)` compares the human-coded type to the Q17-Q28 consensus result.
+  - `Type summary (Q15, Decision Tree, Consensus)` collates the three main type signals for quick inspection.
 
 **Running the pipeline:**
 ```bash
@@ -196,6 +201,7 @@ This ensures reliable extraction of 28 answers per article.
      - Multiple AI run results (N rows per article)
      - Majority vote consensus (1 row per article)
      - Decision Tree and Type Consensus columns
+     - New agreement diagnostics (`AI run agreement`, `Human vs AI`, `Human vs AI (consensus)`, `Type summary`)
    - Raw API responses saved in `results/raw_responses/` as individual JSON files and resumable JSONL streams
 
 ## Important Files

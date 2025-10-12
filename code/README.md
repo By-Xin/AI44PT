@@ -92,3 +92,9 @@ Results are saved to `../results/`:
 - `analysis_results_YYYYMMDD_HHMMSS.xlsx` - Full analysis results with human + AI + majority vote rows
 - `raw_responses/*.json` - Per-run raw API responses for auditing
 - `raw_responses/raw_responses_YYYYMMDD_HHMMSS.jsonl` - Stream of all raw interactions for resumable parsing
+
+Each Excel row now includes additional review signals:
+- `AI run agreement (Q15)` - summarizes how strongly the independent runs converged on a 4PT type.
+- `Human vs AI (Q15)` - highlights whether the human-coded type matches the AI majority decision.
+- `Human vs AI (consensus)` - compares the human-coded type with the Q17-Q28 consensus output.
+- `Type summary (Q15, Decision Tree, Consensus)` - compact view of all type signals (direct answer, deprecated decision tree, Q17-Q28 consensus).
