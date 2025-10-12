@@ -1,20 +1,66 @@
 """
 批量分析流水线主程序 - 4PT框架批量文章分析
 """
+import argparse
 from datetime import datetime
+from pathlib import Path
 from config import Config
 from batch_analyzer import BatchAnalyzer
 
 
+def parse_cli_args():
+    parser = argparse.ArgumentParser(description="4PT batch analysis pipeline")
+    parser.add_argument(
+        "--stage",
+        choices=["raw", "parse", "full"],
+        default="full",
+        help="Processing stage to run: raw generation, parse from raw, or full pipeline",
+    )
+    parser.add_argument(
+        "--raw-path",
+        dest="raw_path",
+        help="Path to raw JSONL file (input for parse stage, output path for raw/full stages)",
+    )
+    parser.add_argument(
+        "--excel-path",
+        dest="excel_path",
+        help="Optional override for Excel source file",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug mode (limits article count and reduces AI effort)",
+    )
+    return parser.parse_args()
+
+
 def main():
     """批量分析主入口"""
+    args = parse_cli_args()
+    stage = args.stage
+    excel_override = Path(args.excel_path).expanduser() if args.excel_path else None
+    raw_path = args.raw_path
+    debug_mode = bool(args.debug)
+
     print("=" * 60)
     print("4PT BATCH ANALYSIS PIPELINE")
+    print("=" * 60)
+    print(f"Selected stage: {stage.upper()}")
+    if raw_path:
+        print(f"Raw path: {raw_path}")
+    if excel_override:
+        print(f"Excel override: {excel_override}")
     print("=" * 60)
     print(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     # 初始化配置
     config = Config()
+    if excel_override:
+        Config.EXCEL_PATH = excel_override
+        config.EXCEL_PATH = excel_override
+    if debug_mode:
+        Config.DEBUG_MODE = True
+        config.DEBUG_MODE = True
 
     # 显示配置信息
     print("\n📋 Configuration:")
@@ -35,7 +81,11 @@ def main():
         print("  - OPENAI_API_KEY is set in .env file")
         print("  - Codebook file exists at:", config.CODEBOOK_MD)
         print("  - Excel file exists at:", config.EXCEL_PATH)
-        return
+        return 1
+
+    if stage == "parse" and not raw_path:
+        print("\n❌ Parse stage requires --raw-path to be specified")
+        return 1
 
     print("\n✅ Configuration validated")
 
@@ -48,7 +98,24 @@ def main():
     print("=" * 60)
 
     try:
-        results_df = analyzer.process_batch()
+        if stage == "raw":
+            raw_output = analyzer.process_batch(
+                excel_path=str(config.EXCEL_PATH),
+                raw_jsonl_path=raw_path,
+                stage="raw"
+            )
+            print(f"\n📦 Raw responses written to: {raw_output}")
+            print(f"\n⏰ End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            print("=" * 60)
+            print("✅ RAW GENERATION COMPLETED")
+            print("=" * 60)
+            return 0
+
+        results_df = analyzer.process_batch(
+            excel_path=str(config.EXCEL_PATH),
+            raw_jsonl_path=raw_path,
+            stage=stage
+        )
 
         # 最终验证
         if results_df is not None and not results_df.empty:
@@ -75,6 +142,11 @@ def main():
 
                 if len(ai_sources) != expected_ai:
                     print(f"  ⚠️ WARNING: Expected {expected_ai} AI rows, found {len(ai_sources)}")
+        else:
+            print("\n⚠️ No results dataframe produced.")
+
+        if stage in {"parse", "full"} and analyzer.last_raw_jsonl_path:
+            print(f"\n📁 Raw JSONL path: {analyzer.last_raw_jsonl_path}")
 
         print(f"\n⏰ End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print("=" * 60)

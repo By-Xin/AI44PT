@@ -24,12 +24,26 @@ pip install -r requirements.txt
 
 ### Running the System
 
-**Batch analysis pipeline** (process multiple papers from Excel):
+**Batch analysis pipeline** now supports a resumable two-stage workflow.
+
 ```bash
-python code/pipeline_main.py
+# Full run: generate raw JSONL + parse into Excel
+python code/pipeline_main.py --stage full
+
+# Stage 1 only: produce raw `.jsonl` (and per-run `.json`) without parsing
+python code/pipeline_main.py --stage raw --raw-path results/raw_responses/my_run.jsonl
+
+# Stage 2 only: parse a previously generated raw file
+python code/pipeline_main.py --stage parse --raw-path results/raw_responses/my_run.jsonl
+
+# Optional: override the Excel source file
+python code/pipeline_main.py --stage full --excel-path /path/to/custom.xlsx
+
+# Enable debug mode (limits to 2 articles, reduced effort)
+python code/pipeline_main.py --stage raw --debug
 ```
 
-This is the main entry point for the modular batch processing system.
+If processing is interrupted, you can resume by rerunning the `parse` stage against the saved JSONL file—no need to regenerate model outputs.
 
 ### Configuration
 
@@ -78,14 +92,14 @@ The system is organized into specialized modules following single-responsibility
    - `BatchAnalyzer`: Main coordinator for batch analysis workflow
    - Manages article processing, PDF reading, multi-run analysis
    - Creates human/AI/majority-vote result rows
-   - Saves raw API responses as JSON for auditing
+   - Persists per-run JSON and aggregated JSONL records for resumable parsing
    - Adds derived columns (Decision Tree, Type Consensus)
    - Handles OpenAI API compatibility (new vs. legacy API)
 
 6. **[pipeline_main.py](code/pipeline_main.py)**: Pipeline entry point
-   - Command-line interface for batch processing
+   - Command-line interface with `--stage` (`raw|parse|full`), `--raw-path`, `--excel-path`
    - Configuration validation and display
-   - Error handling and progress reporting
+   - Error handling and progress reporting between stages
 
 7. **[__init__.py](code/__init__.py)**: Package initialization
    - Exports all main classes for easy importing
@@ -98,7 +112,7 @@ The system is organized into specialized modules following single-responsibility
 - **Majority voting**: Aggregates objective questions across AI runs
 - **Decision Tree 4PT**: Auto-calculates from Q3 (problem contingency) + Q9 (utility)
 - **Type consensus**: Derives best-fit type from Q17-Q28 (per-type confidence scores)
-- Saves raw API responses as JSON for full auditing
+- Saves raw API responses as per-run JSON + aggregated JSONL for full auditing and replay
 - Outputs comprehensive Excel with human + AI results + consensus side-by-side
 
 **Analysis questions** (28 total):
@@ -164,13 +178,17 @@ This ensures reliable extraction of 28 answers per article.
    - Codebook markdown (`TheCodingTask.md`)
 
 2. **Processing**:
-   - `BatchAnalyzer` reads Excel and iterates through articles
-   - `DocumentReader` parses PDFs and codebook into page/section structures
-   - Prompts built with codebook + article + 28 questions
-   - Multiple API calls per article (configurable runs)
-   - `ResponseParser` extracts structured 28-answer responses
-   - `MajorityVoter` aggregates across runs
-   - `DecisionTreeClassifier` and `ConsensusAnalyzer` derive additional classifications
+   - **Raw generation stage** (`--stage raw` / `--stage full` first phase)
+     - `BatchAnalyzer` reads Excel metadata and locates PDFs
+     - `DocumentReader` parses PDFs and codebook into page/section structures
+     - Prompts built with codebook + article + 28 questions
+     - Multiple API calls per article (configurable runs)
+     - Every request/response saved as both per-run JSON and appended to a shared JSONL file
+   - **Parsing stage** (`--stage parse` / `--stage full` second phase)
+     - Loads raw JSONL records and rebuilds AI answer rows without re-calling the API
+     - `ResponseParser` extracts structured 28-answer responses
+     - `MajorityVoter` aggregates across runs
+     - `DecisionTreeClassifier` and `ConsensusAnalyzer` derive additional classifications
 
 3. **Output**:
    - Comprehensive Excel file in `results/` with:
@@ -178,13 +196,13 @@ This ensures reliable extraction of 28 answers per article.
      - Multiple AI run results (N rows per article)
      - Majority vote consensus (1 row per article)
      - Decision Tree and Type Consensus columns
-   - Raw API responses saved as JSON in `results/raw_responses/` for full auditing
+   - Raw API responses saved in `results/raw_responses/` as individual JSON files and resumable JSONL streams
 
 ## Important Files
 
 - **`data/processed/TheCodingTask.md`**: The definitive 4PT coding manual (essential for understanding classifications)
 - **`data/processed/JRGsamples/`**: Sample PDFs and Excel file for batch processing
-- **`results/`**: All analysis outputs (Excel, raw JSON responses)
+- **`results/`**: All analysis outputs (Excel, per-run JSON, aggregated JSONL)
 - **`.env`**: Must contain `OPENAI_API_KEY`
 
 ## Notes on the 4PT Framework
