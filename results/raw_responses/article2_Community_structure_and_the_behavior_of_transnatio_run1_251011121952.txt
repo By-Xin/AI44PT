@@ -1,0 +1,56 @@
+Article ID: 2
+Article Title: Community structure and the behavior of transnational sustainability governors: Toward a multi-relational approach
+Run Index: 1
+Timestamp: 251011121952
+Model: gpt-5-2025-08-07
+Temperature: 0.1
+Reasoning Effort: low
+Text Verbosity: low
+================================================================================
+
+<BEGIN_4PT_RESPONSE>
+<Q1>Yes</Q1>
+<Q2>- Effectiveness of transnational private governance organizations (TPGOs) in agriculture, specifically how community structures and ties among TPGOs shape coordination, collaboration, and isomorphism in addressing sustainability issues in global supply chains</Q2>
+<Q3>Yes</Q3>
+<Q4>- The article targets a defined class of problems: interactions among agriculture-focused TPGOs and their implications for managing sustainability challenges (coordination, collaboration, convergence) within that sector
+- Empirical scope, data, and hypotheses are confined to agriculture TPGOs and their community structures, not to universal policymaking across all problems</Q4>
+<Q5>- “We analyze multiple ties among agriculture TPGOs to offer a more robust exploration of community structures and their potential effects for three forms of TPGO behavior – coordination, collaboration, and isomorphism.” (p.1)
+- “TPGOs… address environmental and social problems arising from business-as-usual practices in global supply chains.” (p.1)
+- “Our empirical case is the agriculture sector where we examine 16 TPGOs…” (p.2)
+- “This multi-relational empirical approach… allows us to explore more reliably whether the policy community structure… makes it more or less likely that TPGOs… address the problems…” (p.2)</Q5>
+<Q6>No</Q6>
+<Q7>- While offering general concepts (thin/thick ties), the study explicitly limits analysis and evidence to agriculture TPGOs; any broader implications are tentative, not developed as universal theories
+- Authors note results “may” inform hypotheses for other sectors, indicating non-universal intent</Q7>
+<Q8>- “We focus on TPGOs active in agriculture…” (p.7)
+- “Although we cannot assume that our findings for this sector are representative of TPGOs as a whole, our results should serve as the basis for hypothesizing about their implications for TPGOs focusing on other sectors.” (p.8)</Q8>
+<Q9>No</Q9>
+<Q10>- The framework centers on community, legitimacy, norms, and collective action, acknowledging ideological and political dynamics, not utility maximization
+- The article integrates rational-economic with political and sociological-ideational explanations, explicitly moving beyond purely self-interested utility frames</Q10>
+<Q11>- “A second reason community structure matters is its role as a source of legitimacy…” (p.3)
+- “TPGOs are therefore seen respectively as either self-interested organizations, embodiments of a political compromise… and/or institutionalizations of a norm… an integrative strand… claims that all of these factors matter…” (p.6)
+- “TPGOs are torn between ideological and material motives and cooperative and competitive impulses…” (p.6)</Q11>
+<Q12>Yes</Q12>
+<Q13>- Emphasis on legitimacy, norms, political discord, ideological commitments, and isomorphism shows motivations and evaluative criteria beyond self-interested satisfaction seeking
+- Thick/thin community concepts and epistemic/symbolic ties highlight non-utility orientations</Q13>
+<Q14>- “Different community structures can thus be expected to support varied norms and offer distinct material and symbolic resources to TPGOs.” (p.3)
+- “With legitimacy, external communities may assist TPGOs to establish and maintain legitimacy…” (p.3)
+- “TPGOs are torn between ideological and material motives…” (p.6)</Q14>
+<Q15>Type 4</Q15>
+<Q16>3 - Medium</Q16>
+<Q17>No</Q17>
+<Q18>- Problem-contingent focus (agriculture TPGOs) is present, but the article does not adopt a utility-dominant lens; it emphasizes legitimacy, norms, and community dynamics beyond utility</Q18>
+<Q19>0.95</Q19>
+<Q20>1</Q20>
+<Q21>No</Q21>
+<Q22>- The study is not universal; it is sector-specific and does not use a utility-optimization adjudicating framework (e.g., CBA). It integrates non-utility motivations and community/legitimacy considerations</Q22>
+<Q23>0.95</Q23>
+<Q24>1</Q24>
+<Q25>No</Q25>
+<Q26>- It is problem-contingent (agriculture TPGOs) rather than universal; although it goes beyond utility, it is anchored to a specific class of problems, which contradicts Type 3’s non-problem-contingent nature</Q26>
+<Q27>0.9</Q27>
+<Q28>2</Q28>
+<Q29>Yes</Q29>
+<Q30>- The article is problem-contingent (agriculture TPGOs; coordination/collaboration/isomorphism affecting sustainability governance) and not utility-dominant, emphasizing legitimacy, norms, and community structures</Q30>
+<Q31>0.85</Q31>
+<Q32>5</Q32>
+</END_4PT_RESPONSE>

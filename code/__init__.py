@@ -1,22 +1,36 @@
 """
-4PT分析系统 - 模块化版本
+4PT批量分析系统 - 模块化批处理架构
 
-这个包提供了一个模块化的4PT框架分析系统，包含以下组件：
+这个包提供了一个完整的模块化批量分析系统，用于处理学术论文的4PT框架分类。
 
-- Config: 配置管理
-- DocumentReader: 文档读取器
-- FourPTAnalyzer: 4PT分析器
-- ResultSaver: 结果保存器
-- FourPTSystem: 主系统类
+核心模块：
+- Config: 完整配置管理（包含所有批处理参数）
+- DocumentReader: PDF和Markdown文档读取器
 
-用法示例:
-    from main import FourPTSystem
-    
-    system = FourPTSystem()
-    system.run()
+批处理模块：
+- ResponseParser: AI响应解析与标准化
+- MajorityVoter: 多次运行的投票机制
+- ConsensusAnalyzer: 类型共识分析
+- DecisionTreeClassifier: 决策树分类器
+- BatchAnalyzer: 批处理协调器
+
+使用示例:
+    from batch_analyzer import BatchAnalyzer
+    from config import Config
+
+    config = Config()
+    analyzer = BatchAnalyzer(config)
+    results = analyzer.process_batch()
+
+或直接运行:
+    python pipeline_main.py
 """
 
-# 模块导入在实际使用时进行，避免循环导入问题
-
-__version__ = "2.0.0"
-__all__ = ["Config", "DocumentReader", "FourPTAnalyzer", "ResultSaver"]
+__version__ = "3.0.0"
+__author__ = "4PT Analysis Team"
+__all__ = [
+    "Config",
+    "DocumentReader",
+    "ResponseParser",
+    "BatchAnalyzer",
+]

@@ -1,0 +1,54 @@
+Article ID: 2
+Article Title: Community structure and the behavior of transnational sustainability governors: Toward a multi-relational approach
+Run Index: 2
+Timestamp: 251011122014
+Model: gpt-5-2025-08-07
+Temperature: 0.1
+Reasoning Effort: low
+Text Verbosity: low
+================================================================================
+
+<BEGIN_4PT_RESPONSE>
+<Q1>Yes</Q1>
+<Q2>- Coordination, collaboration, and isomorphism among transnational private governance organizations (TPGOs) in agriculture, and how community structures affect their behavior and collective action on sustainability challenges</Q2>
+<Q3>Yes</Q3>
+<Q4>- The study targets a defined class of problems: interactions among agriculture TPGOs and their implications for addressing sustainability in supply chains.
+- Empirical focus is on 16 agriculture TPGOs, measuring concrete ties and their effects on specific behaviors (coordination, collaboration, isomorphism).</Q4>
+<Q5>- “We analyze multiple ties among agriculture TPGOs… for three forms of TPGO behavior – coordination, collaboration, and isomorphism.” (Abstract)
+- “Our empirical case is the agriculture sector where we examine 16 TPGOs…” (p.2)
+- “Describing the structure of communities may help us assess the possibility of collective action to address particular problems…” (p.4)</Q5>
+<Q6>No</Q6>
+<Q7>- While concepts are generalizable within TPGOs, the analysis is bounded to agriculture TPGOs and their community structures; it does not offer a universal adjudicating framework for any problem.
+- Authors explicitly caution generalization beyond the sector.</Q7>
+<Q8>- “We focus on TPGOs active in agriculture…” (p.7)
+- “Although we cannot assume that our findings for this sector are representative of TPGOs as a whole, our results should serve as the basis for hypothesizing about their implications for TPGOs focusing on other sectors.” (p.8)</Q8>
+<Q9>No</Q9>
+<Q10>- The article emphasizes legitimacy, norms, community thickness, and isomorphism, and integrates rational-economic, political, and sociological-ideational explanations rather than utility maximization.</Q10>
+<Q11>- “A second reason community structure matters is its role as a source of legitimacy for a TPGO.” (p.3)
+- “Different community structures can thus be expected to support varied norms…” (p.3)
+- “The literature provides different explanations… rational-economic… political tensions… sociological-ideational forces… An integrative strand… all of these factors matter…” (p.6)</Q11>
+<Q12>Yes</Q12>
+<Q13>- The analysis foregrounds legitimacy, norms, identity, and symbolic ties (isomorphism), extending beyond self-interested satisfaction seeking.
+- Community thickness/thinness and epistemic references are treated as drivers of behavior.</Q13>
+<Q14>- “Community structure… as a source of legitimacy…” (p.3)
+- “Features of the communities… such as levels of cohesion… breadth of policy concerns… different views of the problem… are hypothesized to affect… effectiveness.” (p.3)
+- “Symbolic ties… investigate references… to other TPGOs or… third party sources… capture actual isomorphic effects…” (p.6)</Q14>
+<Q15>Type 4</Q15>
+<Q16>3 - Medium</Q16>
+<Q17>No</Q17>
+<Q18>- The study is problem contingent but does not adopt a utility-dominant lens; it emphasizes legitimacy, norms, and community effects rather than utility maximization.</Q18>
+<Q19>0.9</Q19>
+<Q20>1</Q20>
+<Q21>No</Q21>
+<Q22>- It is not universal/adjudicative and does not prioritize utility; it is sector- and actor-class-specific (TPGOs in agriculture).</Q22>
+<Q23>0.95</Q23>
+<Q24>1</Q24>
+<Q25>No</Q25>
+<Q26>- While not utility-dominant, the analysis is problem contingent (focused on a class of problems—TPGO interactions in agriculture), not a universal framework.</Q26>
+<Q27>0.8</Q27>
+<Q28>2</Q28>
+<Q29>Yes</Q29>
+<Q30>- Not utility-dominant and clearly problem contingent to a specified class (agriculture TPGO community structures and behaviors).</Q30>
+<Q31>0.85</Q31>
+<Q32>5</Q32>
+</END_4PT_RESPONSE>
