@@ -33,69 +33,63 @@ This is the main entry point for the modular batch processing system.
 
 ### Configuration
 
-**Base configuration** is in [code/config.py](code/config.py):
+**All configuration** is in [code/config.py](code/config.py):
 - Set `OPENAI_API_KEY` in `.env` file
-- Adjust `CLS_MODEL` for the AI model to use (default: `gpt-5-2025-08-07`)
-- Modify file paths for codebook and papers
-
-**Batch pipeline configuration** is in [code/batch_config.py](code/batch_config.py):
-- `DEBUG_MODE = True`: Limits to 2 articles, faster for testing
+- `CLS_MODEL`: AI model to use (default: `gpt-5-2025-08-07`)
+- `DEBUG_MODE = True`: Limits to 2 articles with reduced AI effort for testing
 - `DEFAULT_AI_RUNS`: Number of independent AI runs per article (default: 3)
 - `TEMPERATURE`: Randomness in AI responses (0.1 for slight randomness)
 - `DEFAULT_REASONING_EFFORT`, `DEFAULT_TEXT_VERBOSITY`: AI behavior parameters
 - `ENABLE_MAJORITY_VOTE`: Enable consensus analysis across multiple runs (default: True)
 - `EXCEL_PATH`, `PDF_FOLDER`: Input data paths
+- `CODEBOOK_MD`, `RESULTS_DIR`, `RAW_OUTPUT_DIR`: File paths for codebook and outputs
 
 ## Architecture
 
-### Core Utilities (`code/`)
+### Core Modules (`code/`)
 
-The system includes core utility modules used by the batch pipeline:
+The system is organized into specialized modules following single-responsibility principles:
 
-1. **[config.py](code/config.py)**: Base configuration management
-   - Project paths, API keys, model settings
-   - Configuration validation
-   - Base class for `BatchConfig`
+1. **[config.py](code/config.py)**: Unified configuration management
+   - All project paths, API keys, model settings in one place
+   - Batch processing parameters (AI runs, voting, debug mode)
+   - 28-question templates and structured response templates
+   - Configuration validation and display methods
+   - Class methods: `validate()`, `setup_directories()`, `display_config()`
 
 2. **[document_reader.py](code/document_reader.py)**: Document ingestion
    - `DocumentReader.read_pdf()`: Extracts text from PDF pages using PyMuPDF
    - `DocumentReader.read_markdown()`: Parses codebook markdown by sections
    - Used by `BatchAnalyzer` for loading papers and codebook
 
-### Modular Batch Pipeline (`code/`)
-
-A production-ready, fully modularized pipeline for processing multiple papers from an Excel file. The batch pipeline is organized into specialized modules following data science best practices:
-
-**Pipeline Modules:**
-
-1. **[batch_config.py](code/batch_config.py)**: Batch-specific configuration
-   - Extends base `Config` class with batch processing parameters
-   - Manages AI runs, voting settings, question templates
-   - Handles debug mode overrides
-
-2. **[response_parser.py](code/response_parser.py)**: AI response parsing
+3. **[response_parser.py](code/response_parser.py)**: AI response parsing
    - `ResponseParser`: Extracts and validates 28 answers from AI responses
    - Handles XML-style structured response templates
    - Normalizes Yes/No, Type classifications, Likert scales, difficulty levels
    - Static methods for extracting numeric values from text
 
-3. **[voting.py](code/voting.py)**: Consensus and voting logic
+4. **[voting.py](code/voting.py)**: Consensus and voting logic
    - `MajorityVoter`: Performs majority voting across multiple AI runs
    - `ConsensusAnalyzer`: Derives type consensus from Q17-Q28 responses
    - `DecisionTreeClassifier`: Calculates 4PT type from Q3 + Q9 (simple decision tree)
    - Handles tie detection and numeric statistics (averages)
 
-4. **[batch_analyzer.py](code/batch_analyzer.py)**: Batch processing orchestration
+5. **[batch_analyzer.py](code/batch_analyzer.py)**: Batch processing orchestration
    - `BatchAnalyzer`: Main coordinator for batch analysis workflow
    - Manages article processing, PDF reading, multi-run analysis
    - Creates human/AI/majority-vote result rows
-   - Saves raw API responses for auditing
+   - Saves raw API responses as JSON for auditing
    - Adds derived columns (Decision Tree, Type Consensus)
+   - Handles OpenAI API compatibility (new vs. legacy API)
 
-5. **[pipeline_main.py](code/pipeline_main.py)**: Pipeline entry point
+6. **[pipeline_main.py](code/pipeline_main.py)**: Pipeline entry point
    - Command-line interface for batch processing
    - Configuration validation and display
    - Error handling and progress reporting
+
+7. **[__init__.py](code/__init__.py)**: Package initialization
+   - Exports all main classes for easy importing
+   - Version information
 
 **Key capabilities:**
 - Reads article metadata from Excel with human annotations
@@ -124,7 +118,7 @@ A production-ready, fully modularized pipeline for processing multiple papers fr
 # Standard run (processes all articles in Excel)
 python code/pipeline_main.py
 
-# For debugging (set DEBUG_MODE = True in batch_config.py)
+# For debugging (set DEBUG_MODE = True in code/config.py)
 # This limits to 2 articles with reduced AI effort
 ```
 
