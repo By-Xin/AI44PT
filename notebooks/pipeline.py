@@ -25,10 +25,11 @@ CODEBOOK_MD = "/Users/xinby/Desktop/AI44PT_Desktop/data/processed/TheCodingTask.
 # 修改输出路径到根目录/results文件夹
 OUTPUT_DIR = "/Users/xinby/Desktop/AI44PT_Desktop/results/"
 OUTPUT_EXCEL = os.path.join(OUTPUT_DIR, f"analysis_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx")
+RAW_OUTPUT_DIR = os.path.join(OUTPUT_DIR, "raw_responses")
 
 CLS_MODEL = "gpt-5-2025-08-07"
 # 调试模式：手动切换为True以限制样本并降低模型开销
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 # 分析参数配置
 TEMPERATURE = 0.1  # 设为0.0确保完全确定性结果，0.1为轻微随机性
@@ -54,7 +55,7 @@ OBJECTIVE_QUESTIONS = [1, 3, 6, 9, 12, 15, 16, 17, 20, 23, 26]  # 客观题编�
 SUBJECTIVE_QUESTIONS = [2, 4, 5, 7, 8, 10, 11, 13, 14, 18, 19, 21, 22, 24, 25, 27, 28]  # 主观题编号（忽略投票）
 TOTAL_QUESTIONS = 28
 TYPE_CLASS_YN_QUESTIONS = [17, 20, 23, 26]
-TYPE_CONFIDENCE_QUESTIONS = [18, 21, 24, 27]
+TYPE_EXTENT_QUESTIONS = [18, 21, 24, 27]
 TYPE_LIKERT_QUESTIONS = [19, 22, 25, 28]
 LIKERT_LABELS = {
     1: "Strongly disagree",
@@ -65,17 +66,23 @@ LIKERT_LABELS = {
 }
 ADDITIONAL_QUESTION_COLUMNS = {
     17: "Type 1 classification support (Yes/No) [Q17]",
-    18: "Type 1 classification confidence (0-1) [Q18]",
+    18: "Type 1 classification extent (0-1) [Q18]",
     19: "Type 1 classification Likert (1-5) [Q19]",
     20: "Type 2 classification support (Yes/No) [Q20]",
-    21: "Type 2 classification confidence (0-1) [Q21]",
+    21: "Type 2 classification extent (0-1) [Q21]",
     22: "Type 2 classification Likert (1-5) [Q22]",
     23: "Type 3 classification support (Yes/No) [Q23]",
-    24: "Type 3 classification confidence (0-1) [Q24]",
+    24: "Type 3 classification extent (0-1) [Q24]",
     25: "Type 3 classification Likert (1-5) [Q25]",
     26: "Type 4 classification support (Yes/No) [Q26]",
-    27: "Type 4 classification confidence (0-1) [Q27]",
+    27: "Type 4 classification extent (0-1) [Q27]",
     28: "Type 4 classification Likert (1-5) [Q28]",
+}
+TYPE_QUESTION_GROUPS = {
+    1: {"support": 17, "extent": 18, "likert": 19},
+    2: {"support": 20, "extent": 21, "likert": 22},
+    3: {"support": 23, "extent": 24, "likert": 25},
+    4: {"support": 26, "extent": 27, "likert": 28},
 }
 
 # 构建基础source标识（包含模型和参数信息）
@@ -83,6 +90,7 @@ BASE_AI_SOURCE_ID = f"{CLS_MODEL}-temp{TEMPERATURE}-reasoning_{REASONING_EFFORT}
 
 # 确保输出目录存在
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(RAW_OUTPUT_DIR, exist_ok=True)
 
 # OpenAI client
 client = OpenAI(api_key=api_key)
@@ -130,25 +138,25 @@ Please analyze this article using the 4PT framework by answering the following q
 
 17. Based on your analysis, do you think this article should be classified as Type 1? (Yes/No) Why or why not. Provide your answer as "Yes - ..." or "No - ..." followed by a short justification.
 
-18. What is your confidence that this article should be classified as Type 1? Respond with a probability between 0 and 1 (two decimal places) followed by a brief rationale, e.g., "0.82 - rationale".
+18. To what extent does this article align with Type 1? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., "0.82 - rationale".
 
 19. On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 1? Provide the number, the matching label, and a short justification.
 
 20. Based on your analysis, do you think this article should be classified as Type 2? (Yes/No) Why or why not. Provide your answer as "Yes - ..." or "No - ..." followed by a short justification.
 
-21. What is your confidence that this article should be classified as Type 2? Respond with a probability between 0 and 1 (two decimal places) followed by a brief rationale, e.g., "0.82 - rationale".
+21. To what extent does this article align with Type 2? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., "0.82 - rationale".
 
 22. On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 2? Provide the number, the matching label, and a short justification.
 
 23. Based on your analysis, do you think this article should be classified as Type 3? (Yes/No) Why or why not. Provide your answer as "Yes - ..." or "No - ..." followed by a short justification.
 
-24. What is your confidence that this article should be classified as Type 3? Respond with a probability between 0 and 1 (two decimal places) followed by a brief rationale, e.g., "0.82 - rationale".
+24. To what extent does this article align with Type 3? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., "0.82 - rationale".
 
 25. On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 3? Provide the number, the matching label, and a short justification.
 
 26. Based on your analysis, do you think this article should be classified as Type 4? (Yes/No) Why or why not. Provide your answer as "Yes - ..." or "No - ..." followed by a short justification.
 
-27. What is your confidence that this article should be classified as Type 4? Respond with a probability between 0 and 1 (two decimal places) followed by a brief rationale, e.g., "0.82 - rationale".
+27. To what extent does this article align with Type 4? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., "0.82 - rationale".
 
 28. On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 4? Provide the number, the matching label, and a short justification.
 
@@ -232,9 +240,9 @@ def read_markdown(path: str, heading_pattern: str = r'^#{1,6}\s'):
     return sections
 
 
-def analyze_article_fourpt_single(article_pages: list, codebook_pages: list, model: str = CLS_MODEL):
+def analyze_article_fourpt_single(article_pages: list, codebook_pages: list, article_meta: dict, run_index: int, model: str = CLS_MODEL):
     if not article_pages:
-        return None, None
+        return None, get_timestamp()
     
     # 将页面内容合并为文本
     article_text = "\n\n".join([f"Page {p['page']}:\n{p['text']}" for p in article_pages])
@@ -262,17 +270,20 @@ You are an expert public policy analyst reviewing sustainability research articl
 {FOURPT_QUESTIONS}
     """.strip()
 
+    analysis_text = None
+    error_message = None
+
     try:
-        # 尝试新API格式，如果不可用则使用标准API
+        response = client.responses.create(
+            model=model,
+            input=prompt,
+            reasoning={"effort": REASONING_EFFORT},
+            text={"verbosity": TEXT_VERBOSITY},
+        )
+        analysis_text = response.output_text
+    except Exception as primary_error:
+        fallback_error = None
         try:
-            response = client.responses.create(
-                model=model,
-                input=prompt,
-                reasoning={"effort": REASONING_EFFORT},
-                text={"verbosity": TEXT_VERBOSITY},
-            )
-            analysis_text = response.output_text
-        except AttributeError:
             response = client.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
@@ -280,21 +291,31 @@ You are an expert public policy analyst reviewing sustainability research articl
                 temperature=TEMPERATURE
             )
             analysis_text = response.choices[0].message.content
-        
-        # 在API调用完成后立即生成时间戳
-        api_timestamp = get_timestamp()
+        except Exception as secondary_error:
+            fallback_error = secondary_error
+        if analysis_text is None:
+            if fallback_error is not None:
+                error_message = f"{primary_error}; fallback error: {fallback_error}"
+            else:
+                error_message = str(primary_error)
+
+    api_timestamp = get_timestamp()
+    status = "success" if analysis_text else "error"
+    save_raw_response(article_meta, run_index, prompt, analysis_text, api_timestamp, status, error_message)
+
+    if analysis_text:
         return analysis_text, api_timestamp
-        
-    except Exception as e:
-        print(f"  ⚠️ Error in analysis: {e}")
-        return None, None
+    
+    if error_message:
+        print(f"  ⚠️ Error in analysis (run {run_index}): {error_message}")
+    return None, api_timestamp
 
 
-def analyze_article_fourpt_multiple(article_pages: list, codebook_pages: list, model: str = CLS_MODEL):
+def analyze_article_fourpt_multiple(article_pages: list, codebook_pages: list, article_meta: dict, model: str = CLS_MODEL):
     """使用4PT框架分析文章 - 支持多次独立运行"""
     if AI_RUNS <= 1:
         # 单次运行
-        response, timestamp = analyze_article_fourpt_single(article_pages, codebook_pages, model)
+        response, timestamp = analyze_article_fourpt_single(article_pages, codebook_pages, article_meta, run_index=1, model=model)
         if response:
             answers = parse_ai_response(response)
             return [(answers, timestamp)] if answers else []
@@ -306,7 +327,7 @@ def analyze_article_fourpt_multiple(article_pages: list, codebook_pages: list, m
     
     for i in range(AI_RUNS):
         print(f"      Iteration {i+1}/{AI_RUNS}...")
-        response, timestamp = analyze_article_fourpt_single(article_pages, codebook_pages, model)
+        response, timestamp = analyze_article_fourpt_single(article_pages, codebook_pages, article_meta, run_index=i+1, model=model)
         if response:
             answers = parse_ai_response(response)
             if answers:
@@ -316,7 +337,7 @@ def analyze_article_fourpt_multiple(article_pages: list, codebook_pages: list, m
                 answer_sets.append((None, timestamp))  # 保持位置对应，仍然记录时间戳
         else:
             print(f"      ⚠️ Iteration {i+1} failed")
-            answer_sets.append((None, get_timestamp()))  # 失败时也记录时间戳
+            answer_sets.append((None, timestamp))  # 失败时也记录时间戳
     
     print(f"    ✅ Completed {sum(1 for x, _ in answer_sets if x is not None)}/{AI_RUNS} successful runs")
     
@@ -362,7 +383,7 @@ def parse_ai_response(response_text):
                 answers[q_num] = "No"
 
     # 标准化概率回答
-    for q_num in TYPE_CONFIDENCE_QUESTIONS:
+    for q_num in TYPE_EXTENT_QUESTIONS:
         if q_num in answers:
             text = answers[q_num]
             match = re.match(r'\s*(0?\.\d+|1(?:\.0+)?)', text)
@@ -393,9 +414,69 @@ def parse_ai_response(response_text):
     
     return answers
 
+def extract_extent_value(text):
+    """Extract 0-1 float value from extent (confidence-like) answer strings."""
+    if text is None:
+        return None
+    match = re.match(r'\s*(0?\.\d+|1(?:\.0+)?)', str(text))
+    if not match:
+        return None
+    try:
+        value = float(match.group(1))
+        return min(max(value, 0.0), 1.0)
+    except ValueError:
+        return None
+
+def extract_likert_value(text):
+    """Extract Likert integer or float from answer strings."""
+    if text is None:
+        return None
+    match = re.match(r'\s*([1-5](?:\.\d+)?)', str(text))
+    if not match:
+        return None
+    try:
+        value = float(match.group(1))
+        return value
+    except ValueError:
+        return None
+
 def get_timestamp():
     """生成时间戳，格式为yymmddhhmmss"""
     return datetime.now().strftime('%y%m%d%H%M%S')
+
+def save_raw_response(article_meta, run_index, prompt, response_text, api_timestamp, status, error_message=None):
+    """Persist raw prompt/response for auditing."""
+    try:
+        os.makedirs(RAW_OUTPUT_DIR, exist_ok=True)
+        article_id = str(article_meta.get('article_id', 'unknown')) if article_meta else 'unknown'
+        safe_article_id = re.sub(r'[^A-Za-z0-9_-]+', '_', article_id)
+        file_name = f"{safe_article_id}_run{run_index}_{api_timestamp}_{status}.json"
+        file_path = os.path.join(RAW_OUTPUT_DIR, file_name)
+
+        record = {
+            "timestamp": api_timestamp,
+            "status": status,
+            "error": error_message,
+            "article_id": article_id,
+            "article_title": article_meta.get('title') if article_meta else None,
+            "article_index": article_meta.get('index') if article_meta else None,
+            "excel_row_total": article_meta.get('total') if article_meta else None,
+            "pdf_path": article_meta.get('pdf_path') if article_meta else None,
+            "run_index": run_index,
+            "ai_runs": article_meta.get('ai_runs') if article_meta else None,
+            "debug_mode": DEBUG_MODE,
+            "model": CLS_MODEL,
+            "temperature": TEMPERATURE,
+            "reasoning_effort": REASONING_EFFORT,
+            "text_verbosity": TEXT_VERBOSITY,
+            "prompt": prompt,
+            "raw_response": response_text,
+        }
+
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(record, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"  ⚠️ Failed to save raw response: {e}")
 
 
 def find_pdf_file(article_id, pdf_folder):
@@ -468,6 +549,97 @@ def calculate_decision_tree_4pt(row, column_mapping):
         return ''  # 无法确定或答案不明确
 
 
+def derive_type_consensus(row, column_mapping):
+    """综合模型对Type 1-4的回答，推导一致性认识"""
+    if not column_mapping:
+        return ''
+
+    type_details = []
+
+    for type_id, q_map in TYPE_QUESTION_GROUPS.items():
+        support_col = column_mapping.get(q_map["support"])
+        extent_col = column_mapping.get(q_map["extent"])
+        likert_col = column_mapping.get(q_map["likert"])
+
+        support_raw = row.get(support_col) if support_col else None
+        extent_raw = row.get(extent_col) if extent_col else None
+        likert_raw = row.get(likert_col) if likert_col else None
+
+        # 处理缺失值
+        if pd.isna(support_raw):
+            support_raw = None
+        if pd.isna(extent_raw):
+            extent_raw = None
+        if pd.isna(likert_raw):
+            likert_raw = None
+
+        support_text = str(support_raw).strip().lower() if support_raw is not None else ''
+        if re.search(r'\byes\b', support_text):
+            support_flag = True
+        elif re.search(r'\bno\b', support_text):
+            support_flag = False
+        else:
+            support_flag = None
+
+        extent_value = extract_extent_value(extent_raw)
+        likert_value = extract_likert_value(likert_raw)
+
+        type_details.append({
+            "type": type_id,
+            "support": support_flag,
+            "extent": extent_value,
+            "likert": likert_value,
+        })
+
+    if not type_details:
+        return ''
+
+    has_signal = any(
+        info["support"] is not None or info["extent"] is not None or info["likert"] is not None
+        for info in type_details
+    )
+    if not has_signal:
+        return "No data"
+
+    best_key = None
+    best_types = []
+    for info in type_details:
+        support_score = 1 if info["support"] is True else (-1 if info["support"] is False else 0)
+        extent_score = info["extent"] if info["extent"] is not None else -1
+        likert_score = info["likert"] if info["likert"] is not None else -1
+        key = (support_score, extent_score, likert_score)
+        if best_key is None or key > best_key:
+            best_key = key
+            best_types = [info]
+        elif key == best_key:
+            best_types.append(info)
+
+    if not best_types or best_key == (-1, -1, -1):
+        return "No clear consensus"
+    if best_key == (0, -1, -1):
+        return "No clear consensus"
+
+    def format_info(info):
+        descriptors = []
+        if info["support"] is True:
+            descriptors.append("Yes")
+        elif info["support"] is False:
+            descriptors.append("No")
+        else:
+            descriptors.append("Unknown")
+        if info["extent"] is not None:
+            descriptors.append(f"extent={info['extent']:.2f}")
+        if info["likert"] is not None:
+            descriptors.append(f"likert={info['likert']:.2f}")
+        detail = "; ".join(descriptors)
+        return f"Type {info['type']} ({detail})"
+
+    if len(best_types) == 1:
+        return format_info(best_types[0])
+
+    formatted = " | ".join(format_info(info) for info in best_types)
+    return f"Tie between {formatted}"
+
 def perform_majority_vote(ai_results_list, column_mapping):
     """
     对多次AI运行结果进行多数投票
@@ -477,19 +649,20 @@ def perform_majority_vote(ai_results_list, column_mapping):
         column_mapping: 问题编号到列名的映射
     
     Returns:
-        dict: 投票结果字典，包含每个问题的多数投票答案
+        tuple: (majority_answers, vote_details, numeric_stats)
     """
     if not ai_results_list or len(ai_results_list) < 2:
-        return {}
+        return {}, {}, {}
     
     # 只考虑成功的AI结果
     successful_results = [answers for answers, _ in ai_results_list if answers is not None]
     
     if len(successful_results) < 2:
-        return {}
+        return {}, {}, {}
     
     majority_answers = {}
     vote_details = {}  # 记录投票详情，用于调试
+    numeric_stats = {}
     
     # 对每个客观问题进行投票
     for q_num in OBJECTIVE_QUESTIONS:
@@ -590,7 +763,30 @@ def perform_majority_vote(ai_results_list, column_mapping):
             else:
                 majority_answers[q_num] = winner_answer
     
-    return majority_answers, vote_details
+    # 计算类型强度与Likert量表的平均值
+    for q_num in TYPE_EXTENT_QUESTIONS:
+        values = []
+        for ai_answers in successful_results:
+            raw = ai_answers.get(q_num)
+            val = extract_extent_value(raw)
+            if val is not None:
+                values.append(val)
+        if values:
+            avg_val = sum(values) / len(values)
+            numeric_stats[q_num] = {"average": avg_val, "count": len(values)}
+    
+    for q_num in TYPE_LIKERT_QUESTIONS:
+        values = []
+        for ai_answers in successful_results:
+            raw = ai_answers.get(q_num)
+            val = extract_likert_value(raw)
+            if val is not None:
+                values.append(val)
+        if values:
+            avg_val = sum(values) / len(values)
+            numeric_stats[q_num] = {"average": avg_val, "count": len(values)}
+    
+    return majority_answers, vote_details, numeric_stats
 
 
 def process_batch_analysis():
@@ -706,8 +902,17 @@ def process_batch_analysis():
         print(f"  📖 PDF loaded: {len(article_pages)} pages, {sum(len(p['text']) for p in article_pages)} chars")
         
         # AI分析
+        article_meta = {
+            "article_id": article_id,
+            "title": title,
+            "index": idx,
+            "total": len(df_human),
+            "pdf_path": pdf_path,
+            "ai_runs": AI_RUNS,
+        }
+
         print(f"  🤖 Running AI analysis...")
-        ai_answer_sets = analyze_article_fourpt_multiple(article_pages, cb_pages)
+        ai_answer_sets = analyze_article_fourpt_multiple(article_pages, cb_pages, article_meta)
         
         if not ai_answer_sets:
             print(f"  ⚠️ All AI analysis runs failed")
@@ -842,9 +1047,9 @@ def process_batch_analysis():
         # 添加Majority Vote结果行（如果启用且有多次成功运行）
         if ENABLE_MAJORITY_VOTE and AI_RUNS > 1 and ai_success_count >= 2:
             print(f"  🗳️ Performing majority vote on {ai_success_count} successful runs...")
-            majority_results, vote_details = perform_majority_vote(ai_answer_sets, column_mapping)
+            majority_results, vote_details, numeric_stats = perform_majority_vote(ai_answer_sets, column_mapping)
             
-            if majority_results:
+            if majority_results or numeric_stats:
                 # 创建majority vote行
                 majority_row = row.to_dict()  # 从human行复制基本信息
                 majority_source_id = f"{BASE_AI_SOURCE_ID}-majority-vote"
@@ -866,10 +1071,26 @@ def process_batch_analysis():
                 for q_num, answer in majority_results.items():
                     if q_num in column_mapping:
                         majority_row[column_mapping[q_num]] = answer
+
+                # 填充强度分和Likert平均
+                for q_num, stats in numeric_stats.items():
+                    if q_num not in column_mapping:
+                        continue
+                    avg_val = stats.get("average")
+                    count = stats.get("count")
+                    if avg_val is None or count is None:
+                        continue
+                    if q_num in TYPE_EXTENT_QUESTIONS:
+                        majority_row[column_mapping[q_num]] = f"{avg_val:.2f} (avg of {count} runs)"
+                    elif q_num in TYPE_LIKERT_QUESTIONS:
+                        rounded = int(round(avg_val))
+                        label = LIKERT_LABELS.get(rounded, "")
+                        label_suffix = f" ~ {label}" if label else ""
+                        majority_row[column_mapping[q_num]] = f"{avg_val:.2f}{label_suffix} (avg of {count} runs)"
                 
                 # 主观题保持为空，但可以添加一个说明
                 for q_num in SUBJECTIVE_QUESTIONS:
-                    if q_num in column_mapping:
+                    if q_num in column_mapping and q_num not in numeric_stats:
                         majority_row[column_mapping[q_num]] = '[SUBJECTIVE - NO VOTE]'
                 
                 results.append(majority_row)
@@ -880,6 +1101,10 @@ def process_batch_analysis():
                     if q_num in [1, 3, 6, 9, 12, 15, 16]:  # 只打印关键问题
                         vote_count_info = vote_details.get(q_num, {}).get('vote_counts', {})
                         print(f"      Q{q_num}: {answer} (votes: {vote_count_info})")
+                for q_num in TYPE_EXTENT_QUESTIONS + TYPE_LIKERT_QUESTIONS:
+                    if q_num in numeric_stats:
+                        stats = numeric_stats[q_num]
+                        print(f"      Q{q_num}: avg={stats['average']:.2f} (n={stats['count']})")
         
         if ai_success_count > 0:
             success_count += 1
@@ -900,6 +1125,10 @@ def process_batch_analysis():
     decision_tree_col = 'Decision Tree 4PT'
     df_results[decision_tree_col] = df_results.apply(
         lambda row: calculate_decision_tree_4pt(row, column_mapping), axis=1
+    )
+    type_consensus_col = 'Type consensus (Q17-Q28 summary)'
+    df_results[type_consensus_col] = df_results.apply(
+        lambda row: derive_type_consensus(row, column_mapping), axis=1
     )
     
     # 统计Decision Tree结果
@@ -945,11 +1174,11 @@ def process_batch_analysis():
         # 构建新的列顺序：base_cols + 原始列（到Q15） + Decision Tree 4PT + 原始列（Q15之后）
         new_cols = (base_cols + 
                    [col for col in original_cols[:q15_index+1] if col not in base_cols] +
-                   [decision_tree_col] +
+                   [decision_tree_col, type_consensus_col] +
                    [col for col in original_cols[q15_index+1:] if col not in base_cols])
     else:
         # 如果没有找到Q15列，就放在最后
-        new_cols = base_cols + [col for col in original_cols if col not in base_cols] + [decision_tree_col]
+        new_cols = base_cols + [col for col in original_cols if col not in base_cols] + [decision_tree_col, type_consensus_col]
     
     # 确保所有列都存在
     for col in new_cols:
@@ -1067,6 +1296,8 @@ def process_batch_analysis():
         display_cols.append(column_mapping[15])
     if decision_tree_col in df_results.columns:
         display_cols.append(decision_tree_col)
+    if type_consensus_col in df_results.columns:
+        display_cols.append(type_consensus_col)
     
     print(df_results[display_cols].head(rows_per_article * 2).to_string(max_colwidth=40))
     
