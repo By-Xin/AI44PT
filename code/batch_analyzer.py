@@ -11,6 +11,11 @@ from typing import Dict, List, Tuple, Optional
 import pandas as pd
 from openai import OpenAI
 
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = None
+
 from config import Config
 from document_reader import DocumentReader
 from response_parser import ResponseParser
@@ -415,16 +420,20 @@ You are an expert public policy analyst reviewing sustainability research articl
 
         aggregated_records: List[Dict] = []
 
-        for idx, row in df_human.iterrows():
+        rows_iter = df_human.iterrows()
+        if tqdm:
+            rows_iter = tqdm(rows_iter, total=article_count, desc="Raw generation", unit="article")
+
+        for seq_idx, (df_index, row) in enumerate(rows_iter, start=1):
             article_id = row['#']
             title = row.get('Title of the Paper', 'Unknown')
 
-            print(f"\n[{idx+1}/{article_count}] Generating raw for article #{article_id}: {title[:50]}...")
+            print(f"\n[{seq_idx}/{article_count}] Generating raw for article #{article_id}: {title[:50]}...")
 
             article_meta = {
                 "article_id": article_id,
                 "title": title,
-                "index": idx,
+                "index": df_index,
                 "total": article_count,
                 "pdf_path": None,
                 "ai_runs": ai_runs,
@@ -446,7 +455,7 @@ You are an expert public policy analyst reviewing sustainability research articl
                         error_message="PDF not found",
                         error_type="PDF_NOT_FOUND",
                     )
-                        aggregated_records.append(err_record)
+                    aggregated_records.append(err_record)
                 continue
 
             article_meta['pdf_path'] = pdf_path
@@ -563,11 +572,15 @@ You are an expert public policy analyst reviewing sustainability research articl
 
         results = []
 
-        for idx, row in df_human.iterrows():
+        parse_iter = df_human.iterrows()
+        if tqdm:
+            parse_iter = tqdm(parse_iter, total=total_articles, desc="Parsing articles", unit="article")
+
+        for seq_idx, (_, row) in enumerate(parse_iter, start=1):
             article_id = str(row['#'])
             title = row.get('Title of the Paper', 'Unknown')
 
-            print(f"\n[{idx+1}/{total_articles}] Parsing article #{article_id}: {title[:50]}...")
+            print(f"\n[{seq_idx}/{total_articles}] Parsing article #{article_id}: {title[:50]}...")
             q15_col = column_mapping.get(15)
 
             # 添加human结果行
