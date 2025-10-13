@@ -35,6 +35,9 @@ python code/pipeline_main.py --stage parse --raw-path results/raw_responses/aggr
 # Allow batch parse to skip any JSON inputs that fail to load/parse
 python code/pipeline_main.py --stage parse --raw-path results/raw_responses/aggregated --skip-bad
 
+# Parse using every run found in the raw JSON (ignore configured ai_runs)
+python code/pipeline_main.py --stage parse --raw-path results/raw_responses/aggregated --parse-all-runs
+
 # Override the Excel source if needed
 python code/pipeline_main.py --stage full --excel-path /path/to/custom.xlsx
 
@@ -48,7 +51,7 @@ All configuration is now in a single file: `config.py`
 
 **Key parameters to adjust:**
 - `DEBUG_MODE = True` - Limits to 2 articles for testing
-- `DEFAULT_AI_RUNS = 3` - Number of independent AI runs per article
+- `DEFAULT_AI_RUNS = 3` - Number of independent AI runs per article (parse stage uses this unless you pass `--parse-all-runs`)
 - `ENABLE_MAJORITY_VOTE = True` - Enable consensus analysis
 - `EXCEL_PATH` - Path to input Excel file
 - `PDF_FOLDER` - Path to PDF files directory
@@ -90,7 +93,7 @@ pipeline_main.py
 2. **Parsing (`--stage parse`)**
    - Loads the original Excel metadata
    - Replays answers from the saved aggregated `.json`
-   - Rebuilds AI rows, applies majority voting/consensus, and produces the final spreadsheet
+   - Rebuilds AI rows, applies majority voting/consensus, and produces the final spreadsheet (pass `--parse-all-runs` to include every run found in the raw JSON bundle)
 
 The staged approach makes the process resumable: if generation is interrupted, simply re-run `--stage parse` with the saved aggregated JSON to reconstruct outputs without re-querying the API.
 

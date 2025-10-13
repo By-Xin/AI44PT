@@ -37,6 +37,12 @@ def parse_cli_args():
         action="store_true",
         help="Skip JSON files that fail to parse (useful for batch parse runs)",
     )
+    parser.add_argument(
+        "--parse-all-runs",
+        dest="parse_all_runs",
+        action="store_true",
+        help="During parse, include every run found in JSON instead of limiting to configured ai_runs",
+    )
     return parser.parse_args()
 
 
@@ -49,6 +55,7 @@ def main():
     raw_path_arg = Path(raw_path_input).expanduser() if raw_path_input else None
     debug_mode = bool(args.debug)
     skip_bad = bool(args.skip_bad)
+    parse_all_runs = bool(args.parse_all_runs)
 
     print("=" * 60)
     print("4PT BATCH ANALYSIS PIPELINE")
@@ -83,6 +90,7 @@ def main():
     print(f"   Output Directory: {config.RESULTS_DIR}")
     if stage == "parse":
         print(f"   Skip Bad JSON: {skip_bad}")
+        print(f"   Parse All Runs: {parse_all_runs}")
 
     # 验证配置
     if not config.validate():
@@ -185,8 +193,14 @@ def main():
                     print(f"  ⚠️ WARNING: Missing human row")
 
                 ai_sources = [s for s in sources if s != 'human']
-                expected_ai = config.get_ai_runs()
-                if config.ENABLE_MAJORITY_VOTE and config.get_ai_runs() > 1:
+                expected_runs = analyzer.last_parse_run_counts.get(str(article_id))
+                if expected_runs is None:
+                    expected_runs = analyzer.last_parse_run_counts.get(article_id)
+                if expected_runs is None:
+                    expected_runs = config.get_ai_runs()
+
+                expected_ai = expected_runs
+                if config.ENABLE_MAJORITY_VOTE and expected_runs > 1:
                     expected_ai += 1  # +1 for majority vote row
 
                 if len(ai_sources) != expected_ai:
@@ -199,7 +213,8 @@ def main():
             raw_output = analyzer.process_batch(
                 excel_path=str(config.EXCEL_PATH),
                 raw_data_path=raw_input_param,
-                stage="raw"
+                stage="raw",
+                use_all_runs=parse_all_runs
             )
             print(f"\n📦 Raw responses written to: {raw_output}")
             print(f"\n⏰ End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -218,7 +233,8 @@ def main():
                     results_df = analyzer.process_batch(
                         excel_path=str(config.EXCEL_PATH),
                         raw_data_path=str(jsonl_path),
-                        stage="parse"
+                        stage="parse",
+                        use_all_runs=parse_all_runs
                     )
                 except Exception as exc:
                     print(f"\n❌ Failed to parse {jsonl_path}: {exc}")
@@ -256,7 +272,8 @@ def main():
             results_df = analyzer.process_batch(
                 excel_path=str(config.EXCEL_PATH),
                 raw_data_path=raw_input_param,
-                stage=stage
+                stage=stage,
+                use_all_runs=parse_all_runs
             )
         except Exception as exc:
             if stage == "parse" and skip_bad:

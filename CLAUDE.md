@@ -40,6 +40,9 @@ python code/pipeline_main.py --stage parse --raw-path results/raw_responses/aggr
 # Optionally skip broken raw batches during parsing
 python code/pipeline_main.py --stage parse --raw-path results/raw_responses/aggregated --skip-bad
 
+# Parse using every run found in the raw JSON bundle
+python code/pipeline_main.py --stage parse --raw-path results/raw_responses/aggregated --parse-all-runs
+
 # Optional: override the Excel source file
 python code/pipeline_main.py --stage full --excel-path /path/to/custom.xlsx
 
@@ -55,7 +58,7 @@ If processing is interrupted, you can resume by rerunning the `parse` stage agai
 - Set `OPENAI_API_KEY` in `.env` file
 - `CLS_MODEL`: AI model to use (default: `gpt-5-2025-08-07`)
 - `DEBUG_MODE = True`: Limits to 2 articles with reduced AI effort for testing
-- `DEFAULT_AI_RUNS`: Number of independent AI runs per article (default: 3)
+- `DEFAULT_AI_RUNS`: Number of independent AI runs per article (default: 3; parse stage uses this unless `--parse-all-runs` is supplied)
 - `TEMPERATURE`: Randomness in AI responses (0.1 for slight randomness)
 - `DEFAULT_REASONING_EFFORT`, `DEFAULT_TEXT_VERBOSITY`: AI behavior parameters
 - `ENABLE_MAJORITY_VOTE`: Enable consensus analysis across multiple runs (default: True)
@@ -195,7 +198,7 @@ This ensures reliable extraction of 28 answers per article.
      - Multiple API calls per article (configurable runs)
      - Every request/response saved as both per-run JSON and captured in an aggregated JSON bundle
    - **Parsing stage** (`--stage parse` / `--stage full` second phase)
-     - Loads raw JSON records (single aggregated file or directory of per-run JSONs) and rebuilds AI answer rows without re-calling the API
+     - Loads raw JSON records (single aggregated file or directory of per-run JSONs) and rebuilds AI answer rows without re-calling the API; use `--parse-all-runs` to include every run discovered in the raw data
      - `ResponseParser` extracts structured 28-answer responses
      - `MajorityVoter` aggregates across runs
      - `DecisionTreeClassifier` and `ConsensusAnalyzer` derive additional classifications

@@ -55,6 +55,7 @@ class BatchAnalyzer:
             'analysis_error': 0
         }
         self.last_raw_source_path: Optional[Path] = None
+        self.last_parse_run_counts: Dict[str, int] = {}
 
     def analyze_single_article(
         self,
@@ -207,7 +208,8 @@ class BatchAnalyzer:
         self,
         excel_path: str = None,
         raw_data_path: str = None,
-        stage: str = "full"
+        stage: str = "full",
+        use_all_runs: bool = False
     ):
         """
         批量处理入口（支持生成raw或从raw解析）
@@ -216,6 +218,7 @@ class BatchAnalyzer:
             excel_path: Excel文件路径
             raw_data_path: 原始JSON文件路径或目录（解析阶段使用）
             stage: 处理阶段，可选 "raw"、"parse"、"full"
+            use_all_runs: 解析阶段是否使用所有可用run（忽略配置的ai_runs限制）
 
         Returns:
             当stage为"raw"时返回JSON路径，其余情况返回结果DataFrame
@@ -228,11 +231,19 @@ class BatchAnalyzer:
         if stage == "parse":
             if not raw_data_path:
                 raise ValueError("parse stage requires raw data path")
-            return self.parse_raw_responses(json_path=raw_data_path, excel_path=excel_path)
+            return self.parse_raw_responses(
+                json_path=raw_data_path,
+                excel_path=excel_path,
+                use_all_runs=use_all_runs
+            )
 
         if stage == "full":
             generated_path = self.generate_raw_responses(excel_path=excel_path, output_path=raw_data_path)
-            return self.parse_raw_responses(json_path=str(generated_path), excel_path=excel_path)
+            return self.parse_raw_responses(
+                json_path=str(generated_path),
+                excel_path=excel_path,
+                use_all_runs=use_all_runs
+            )
 
         raise ValueError(f"Unsupported processing stage: {stage}")
 
@@ -510,7 +521,8 @@ You are an expert public policy analyst reviewing sustainability research articl
     def parse_raw_responses(
         self,
         json_path: str,
-        excel_path: str = None
+        excel_path: str = None,
+        use_all_runs: bool = False
     ) -> pd.DataFrame:
         """从原始JSON记录解析并生成结果"""
         excel_path = excel_path or str(self.config.EXCEL_PATH)
@@ -534,6 +546,8 @@ You are an expert public policy analyst reviewing sustainability research articl
         # 获取列名映射
         column_mapping = self._get_column_mapping(df_human.columns)
         print(f"Found {len(column_mapping)} question mappings")
+
+        self.last_parse_run_counts = {}
 
         # 读取原始记录
         if raw_source.is_dir():
@@ -599,23 +613,48 @@ You are an expert public policy analyst reviewing sustainability research articl
                 self.stats['analysis_error'] += 1
                 continue
 
-            ai_runs = self.config.get_ai_runs()
-            run_record_map = {}
+            configured_runs = self.config.get_ai_runs()
+            run_record_map: Dict[int, Dict] = {}
             for record in article_records:
                 run_idx = record.get('run_index')
-                if run_idx is not None and run_idx not in run_record_map:
+                if run_idx is None:
+                    continue
+                if isinstance(run_idx, str):
+                    if run_idx.isdigit():
+                        run_idx = int(run_idx)
+                    else:
+                        continue
+                if isinstance(run_idx, (int, float)):
+                    try:
+                        run_idx = int(run_idx)
+                    except ValueError:
+                        continue
+                if not isinstance(run_idx, int):
+                    continue
+                if run_idx not in run_record_map:
                     run_record_map[run_idx] = record
+
+            if use_all_runs and run_record_map:
+                run_indices = sorted(run_record_map.keys())
+            else:
+                run_indices = list(range(1, configured_runs + 1))
+
+            if not run_indices:
+                run_indices = list(range(1, configured_runs + 1))
+
+            actual_run_count = len(run_indices)
+            self.last_parse_run_counts[article_id] = actual_run_count
 
             ai_answer_sets = []
             ai_success_count = 0
 
-            for run_idx in range(ai_runs):
-                record = run_record_map.get(run_idx + 1)
+            for pos_idx, run_number in enumerate(run_indices):
+                record = run_record_map.get(run_number)
                 if not record:
-                    print(f"  ⚠️ Missing raw record for run {run_idx+1}; inserting placeholder")
+                    print(f"  ⚠️ Missing raw record for run {run_number}; inserting placeholder")
                     placeholder_ts = self._get_timestamp()
-                    ai_row = self._create_ai_row(row, run_idx, None, placeholder_ts, column_mapping)
-                    ai_row['Analysis_Status'] = f'RAW_MISSING_{placeholder_ts}'
+                    ai_row = self._create_ai_row(row, pos_idx, None, placeholder_ts, column_mapping)
+                    ai_row['Analysis_Status'] = f'RAW_MISSING_RUN{run_number}_{placeholder_ts}'
                     results.append(ai_row)
                     self.stats['analysis_error'] += 1
                     continue
@@ -628,18 +667,18 @@ You are an expert public policy analyst reviewing sustainability research articl
                 if status == 'success' and raw_text:
                     answers = self.parser.parse_response(raw_text)
                     if answers:
-                        ai_row = self._create_ai_row(row, run_idx, answers, api_timestamp, column_mapping)
+                        ai_row = self._create_ai_row(row, pos_idx, answers, api_timestamp, column_mapping)
                         ai_answer_sets.append((answers, api_timestamp))
                         ai_success_count += 1
                     else:
-                        print(f"  ⚠️ Parse error for run {run_idx+1}")
-                        ai_row = self._create_ai_row(row, run_idx, None, api_timestamp, column_mapping)
-                        ai_row['Analysis_Status'] = f'PARSE_ERROR_{api_timestamp}'
+                        print(f"  ⚠️ Parse error for run {run_number}")
+                        ai_row = self._create_ai_row(row, pos_idx, None, api_timestamp, column_mapping)
+                        ai_row['Analysis_Status'] = f'PARSE_ERROR_RUN{run_number}_{api_timestamp}'
                         self.stats['analysis_error'] += 1
                 else:
-                    ai_row = self._create_ai_row(row, run_idx, None, api_timestamp, column_mapping)
+                    ai_row = self._create_ai_row(row, pos_idx, None, api_timestamp, column_mapping)
                     label = error_type or status or 'ANALYSIS_ERROR'
-                    ai_row['Analysis_Status'] = f'{label.upper()}_{api_timestamp}'
+                    ai_row['Analysis_Status'] = f'{label.upper()}_RUN{run_number}_{api_timestamp}'
 
                     if error_type == 'PDF_NOT_FOUND':
                         self.stats['pdf_not_found'] += 1
@@ -665,7 +704,7 @@ You are an expert public policy analyst reviewing sustainability research articl
 
             # 多数票
             if (self.config.ENABLE_MAJORITY_VOTE and
-                self.config.get_ai_runs() > 1 and
+                actual_run_count > 1 and
                 ai_success_count >= 2):
                 vote_output = self._create_majority_vote_row(
                     row, ai_answer_sets, column_mapping,
@@ -686,7 +725,7 @@ You are an expert public policy analyst reviewing sustainability research articl
             else:
                 if not self.config.ENABLE_MAJORITY_VOTE:
                     human_row[self.HUMAN_VS_AI_COL] = 'Majority vote disabled'
-                elif self.config.get_ai_runs() <= 1:
+                elif actual_run_count <= 1:
                     human_row[self.HUMAN_VS_AI_COL] = 'Majority vote not applicable (single run)'
                 elif ai_success_count < 2:
                     human_row[self.HUMAN_VS_AI_COL] = 'Majority vote unavailable (insufficient runs)'
