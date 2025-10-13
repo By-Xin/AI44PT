@@ -387,11 +387,24 @@ You are an expert public policy analyst reviewing sustainability research articl
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         if output_path:
             output_path = Path(output_path)
+            if output_path.suffix:
+                base_dir = output_path.parent
+                run_dir_name = output_path.stem
+                final_filename = output_path.name
+            else:
+                base_dir = output_path
+                run_dir_name = f"raw_batch_{timestamp}"
+                final_filename = f"raw_responses_{timestamp}.json"
         else:
-            output_path = self.config.RAW_OUTPUT_DIR / "aggregated" / f"raw_responses_{timestamp}.json"
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+            base_dir = self.config.RAW_OUTPUT_DIR
+            run_dir_name = f"raw_batch_{timestamp}"
+            final_filename = f"raw_responses_{timestamp}.json"
 
-        print(f"\n📝 Writing aggregated raw responses to JSON: {output_path}")
+        run_dir = base_dir / run_dir_name
+        run_dir.mkdir(parents=True, exist_ok=True)
+        final_output_path = run_dir / final_filename
+
+        print(f"\n📝 Writing aggregated raw responses to JSON: {final_output_path}")
 
         # 预加载Codebook
         cb_pages = self.document_reader.read_markdown(str(self.config.CODEBOOK_MD))
@@ -433,7 +446,7 @@ You are an expert public policy analyst reviewing sustainability research articl
                         error_message="PDF not found",
                         error_type="PDF_NOT_FOUND",
                     )
-                    aggregated_records.append(err_record)
+                        aggregated_records.append(err_record)
                 continue
 
             article_meta['pdf_path'] = pdf_path
@@ -473,7 +486,7 @@ You are an expert public policy analyst reviewing sustainability research articl
                 else:
                     generation_stats['analysis_error'] += 1
 
-        with open(output_path, 'w', encoding='utf-8') as json_file:
+        with open(final_output_path, 'w', encoding='utf-8') as json_file:
             json.dump(aggregated_records, json_file, ensure_ascii=False, indent=2)
 
         print("\n📦 Raw generation complete")
@@ -482,8 +495,8 @@ You are an expert public policy analyst reviewing sustainability research articl
         print(f"  ⚠️ PDF not found: {generation_stats['pdf_not_found']}")
         print(f"  ⚠️ PDF read errors: {generation_stats['pdf_read_error']}")
 
-        self.last_raw_source_path = output_path
-        return output_path
+        self.last_raw_source_path = final_output_path
+        return final_output_path
 
     def parse_raw_responses(
         self,
