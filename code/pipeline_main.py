@@ -31,6 +31,12 @@ def parse_cli_args():
         action="store_true",
         help="Enable debug mode (limits article count and reduces AI effort)",
     )
+    parser.add_argument(
+        "--skip-bad",
+        dest="skip_bad",
+        action="store_true",
+        help="Skip JSONL files that fail to parse (useful for batch parse runs)",
+    )
     return parser.parse_args()
 
 
@@ -42,6 +48,7 @@ def main():
     raw_path_input = args.raw_path
     raw_path_arg = Path(raw_path_input).expanduser() if raw_path_input else None
     debug_mode = bool(args.debug)
+    skip_bad = bool(args.skip_bad)
 
     print("=" * 60)
     print("4PT BATCH ANALYSIS PIPELINE")
@@ -74,6 +81,8 @@ def main():
     print(f"   Debug Mode: {config.DEBUG_MODE}")
     print(f"   Excel Path: {config.EXCEL_PATH}")
     print(f"   Output Directory: {config.RESULTS_DIR}")
+    if stage == "parse":
+        print(f"   Skip Bad JSONL: {skip_bad}")
 
     # 验证配置
     if not config.validate():
@@ -131,6 +140,7 @@ def main():
 
     # 创建批量分析器
     analyzer = BatchAnalyzer(config)
+    skipped_batches = []
 
     # 执行批量分析
     print("\n" + "=" * 60)
@@ -185,11 +195,26 @@ def main():
                 print("\n" + "-" * 60)
                 print(f"BATCH {idx}/{total_runs}: {jsonl_path}")
                 print("-" * 60)
-                results_df = analyzer.process_batch(
-                    excel_path=str(config.EXCEL_PATH),
-                    raw_jsonl_path=str(jsonl_path),
-                    stage="parse"
-                )
+                try:
+                    results_df = analyzer.process_batch(
+                        excel_path=str(config.EXCEL_PATH),
+                        raw_jsonl_path=str(jsonl_path),
+                        stage="parse"
+                    )
+                except Exception as exc:
+                    print(f"\n❌ Failed to parse {jsonl_path}: {exc}")
+                    if skip_bad:
+                        skipped_batches.append((jsonl_path, str(exc)))
+                        continue
+                    raise
+
+                if (results_df is None) or results_df.empty:
+                    message = "Parse returned no results"
+                    print(f"  ⚠️ {message}")
+                    if skip_bad:
+                        skipped_batches.append((jsonl_path, message))
+                        continue
+
                 verify_results(results_df)
 
                 if analyzer.last_raw_jsonl_path:
@@ -199,13 +224,35 @@ def main():
                 print("=" * 60)
                 print("✅ PIPELINE COMPLETED SUCCESSFULLY")
                 print("=" * 60)
+
+            if skipped_batches:
+                print("\n" + "-" * 60)
+                print("SKIPPED BATCHES SUMMARY")
+                print("-" * 60)
+                for path, reason in skipped_batches:
+                    print(f"⏭️ {path} -> {reason}")
             return 0
 
-        results_df = analyzer.process_batch(
-            excel_path=str(config.EXCEL_PATH),
-            raw_jsonl_path=raw_jsonl_param,
-            stage=stage
-        )
+        try:
+            results_df = analyzer.process_batch(
+                excel_path=str(config.EXCEL_PATH),
+                raw_jsonl_path=raw_jsonl_param,
+                stage=stage
+            )
+        except Exception as exc:
+            if stage == "parse" and skip_bad:
+                print(f"\n❌ Failed to parse {raw_jsonl_param}: {exc}")
+                print("⏭️ Skipping per --skip-bad flag")
+                return 0
+            raise
+
+        if stage == "parse" and ((results_df is None) or results_df.empty):
+            message = "Parse returned no results"
+            print(f"❌ {message}")
+            if skip_bad:
+                print("⏭️ Skipping per --skip-bad flag")
+                return 0
+            return 1
 
         verify_results(results_df)
 

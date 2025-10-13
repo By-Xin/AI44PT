@@ -30,6 +30,9 @@ python code/pipeline_main.py --stage parse --raw-path results/raw_responses/my_r
 # Stage 2 in batch mode: parse every JSONL in a directory (or omit --raw-path to use the default)
 python code/pipeline_main.py --stage parse --raw-path results/raw_responses
 
+# Allow batch parse to skip any JSONL files that fail to load/parse
+python code/pipeline_main.py --stage parse --raw-path results/raw_responses --skip-bad
+
 # Override the Excel source if needed
 python code/pipeline_main.py --stage full --excel-path /path/to/custom.xlsx
 
