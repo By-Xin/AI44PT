@@ -19,7 +19,7 @@ def parse_cli_args():
     parser.add_argument(
         "--raw-path",
         dest="raw_path",
-        help="Path to raw JSONL file or directory of JSONL files (input for parse stage, output path for raw/full stages)",
+        help="Path to raw JSON/JSONL file or directory (input for parse stage, output path for raw/full stages)",
     )
     parser.add_argument(
         "--excel-path",
@@ -108,29 +108,40 @@ def main():
                 raw_jsonl_output = raw_path_arg
                 print(f"\n📁 Raw JSONL output target: {raw_jsonl_output}")
     elif stage == "parse":
+        def _collect_parse_targets(directory: Path):
+            jsonl_files = sorted(directory.glob("*.jsonl"))
+            if jsonl_files:
+                print(f"\n📁 Found {len(jsonl_files)} JSONL file(s) in {directory}")
+                return jsonl_files
+            json_files = sorted(directory.glob("*.json"))
+            if json_files:
+                print(f"\n📁 Found {len(json_files)} JSON file(s) in {directory}; will merge during parse")
+                return [directory]
+            print(f"\n❌ No JSON or JSONL files found in directory: {directory}")
+            return []
+
         if raw_path_arg:
             if raw_path_arg.is_dir():
-                parse_targets = sorted(raw_path_arg.glob("*.jsonl"))
+                parse_targets = _collect_parse_targets(raw_path_arg)
                 if not parse_targets:
-                    print(f"\n❌ No JSONL files found in directory: {raw_path_arg}")
                     return 1
-                print(f"\n📁 Found {len(parse_targets)} JSONL file(s) in {raw_path_arg}")
             elif raw_path_arg.is_file():
-                parse_targets = [raw_path_arg]
-                print(f"\n📁 Parsing JSONL file: {raw_path_arg}")
-            elif raw_path_arg.exists():
-                print(f"\n❌ Raw path is not a JSONL file: {raw_path_arg}")
-                return 1
+                suffix = raw_path_arg.suffix.lower()
+                if suffix in {".jsonl", ".json"}:
+                    parse_targets = [raw_path_arg]
+                    print(f"\n📁 Parsing raw file: {raw_path_arg}")
+                else:
+                    print(f"\n❌ Unsupported raw file type: {raw_path_arg.suffix}")
+                    return 1
             else:
                 print(f"\n❌ Raw path not found: {raw_path_arg}")
                 return 1
         else:
             default_dir = config.RAW_OUTPUT_DIR
-            parse_targets = sorted(default_dir.glob("*.jsonl"))
+            parse_targets = _collect_parse_targets(default_dir)
             if not parse_targets:
-                print(f"\n❌ No JSONL files found in default raw directory: {default_dir}")
                 return 1
-            print(f"\n📁 Using default raw directory: {default_dir} ({len(parse_targets)} JSONL file(s))")
+            print(f"\n📁 Using default raw directory: {default_dir}")
 
     raw_jsonl_param = None
     if stage in {"raw", "full"}:

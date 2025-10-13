@@ -24,13 +24,15 @@ python code/pipeline_main.py --stage full
 # (Optional) Stage 1: generate raw JSONL only
 python code/pipeline_main.py --stage raw --raw-path results/raw_responses/my_run.jsonl
 
-# (Optional) Stage 2: parse a previously generated JSONL
+# (Optional) Stage 2: parse a previously generated JSON/JSONL file
 python code/pipeline_main.py --stage parse --raw-path results/raw_responses/my_run.jsonl
 
 # Stage 2 in batch mode: parse every JSONL in a directory (or omit --raw-path to use the default)
 python code/pipeline_main.py --stage parse --raw-path results/raw_responses
 
-# Allow batch parse to skip any JSONL files that fail to load/parse
+# (The parser also supports directories that contain only per-run *.json files)
+
+# Allow batch parse to skip any JSON/JSONL inputs that fail to load/parse
 python code/pipeline_main.py --stage parse --raw-path results/raw_responses --skip-bad
 
 # Override the Excel source if needed

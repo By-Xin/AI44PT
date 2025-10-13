@@ -332,21 +332,56 @@ You are an expert public policy analyst reviewing sustainability research articl
         except Exception as e:
             print(f"  ⚠️ Failed to append raw JSONL record: {e}")
 
-    def _load_raw_records(self, jsonl_path: Path) -> List[Dict]:
-        """从JSONL文件读取原始记录"""
-        records = []
-        try:
-            with open(jsonl_path, 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        records.append(json.loads(line))
-                    except json.JSONDecodeError as exc:
-                        print(f"  ⚠️ Skipping malformed JSON line: {exc}")
-        except FileNotFoundError:
-            print(f"❌ Raw JSONL file not found: {jsonl_path}")
+    def _load_raw_records(self, source_path: Path) -> List[Dict]:
+        """从JSON/JSONL文件或目录读取原始记录"""
+        records: List[Dict] = []
+
+        def load_jsonl_file(path: Path):
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            records.append(json.loads(line))
+                        except json.JSONDecodeError as exc:
+                            print(f"  ⚠️ Skipping malformed JSON line in {path.name}: {exc}")
+            except FileNotFoundError:
+                print(f"❌ Raw JSONL file not found: {path}")
+
+        def load_json_file(path: Path):
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    records.append(json.load(f))
+            except FileNotFoundError:
+                print(f"❌ Raw JSON file not found: {path}")
+            except json.JSONDecodeError as exc:
+                print(f"  ⚠️ Skipping malformed JSON file {path.name}: {exc}")
+
+        if source_path.is_dir():
+            jsonl_files = sorted(source_path.glob("*.jsonl"))
+            json_files = sorted(source_path.glob("*.json"))
+
+            if jsonl_files:
+                for jsonl_file in jsonl_files:
+                    load_jsonl_file(jsonl_file)
+            if json_files:
+                for json_file in json_files:
+                    load_json_file(json_file)
+
+            if not jsonl_files and not json_files:
+                print(f"❌ No JSON or JSONL files found in directory: {source_path}")
+
+            return records
+
+        suffix = source_path.suffix.lower()
+        if suffix == ".jsonl":
+            load_jsonl_file(source_path)
+        elif suffix == ".json":
+            load_json_file(source_path)
+        else:
+            print(f"❌ Unsupported raw data format: {source_path}")
         return records
 
     def generate_raw_responses(
@@ -471,8 +506,8 @@ You are an expert public policy analyst reviewing sustainability research articl
     ) -> pd.DataFrame:
         """从原始JSONL解析并生成结果"""
         excel_path = excel_path or str(self.config.EXCEL_PATH)
-        jsonl_path = Path(jsonl_path)
-        self.last_raw_jsonl_path = jsonl_path
+        raw_source = Path(jsonl_path)
+        self.last_raw_jsonl_path = raw_source
 
         print(f"\n📥 Loading Excel for parsing: {excel_path}")
         df_human = pd.read_excel(excel_path)
@@ -493,8 +528,16 @@ You are an expert public policy analyst reviewing sustainability research articl
         print(f"Found {len(column_mapping)} question mappings")
 
         # 读取原始记录
-        print(f"\n📂 Reading raw JSONL: {jsonl_path}")
-        raw_records = self._load_raw_records(jsonl_path)
+        if raw_source.is_dir():
+            print(f"\n📂 Reading raw responses from directory: {raw_source}")
+        elif raw_source.suffix.lower() == ".jsonl":
+            print(f"\n📂 Reading raw JSONL: {raw_source}")
+        elif raw_source.suffix.lower() == ".json":
+            print(f"\n📂 Reading raw JSON file: {raw_source}")
+        else:
+            print(f"\n📂 Reading raw responses from: {raw_source}")
+
+        raw_records = self._load_raw_records(raw_source)
         if not raw_records:
             print("❌ No raw records found; aborting parse stage")
             return pd.DataFrame()
