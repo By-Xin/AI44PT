@@ -19,7 +19,7 @@ def parse_cli_args():
     parser.add_argument(
         "--raw-path",
         dest="raw_path",
-        help="Path to raw JSONL file (input for parse stage, output path for raw/full stages)",
+        help="Path to raw JSONL file or directory of JSONL files (input for parse stage, output path for raw/full stages)",
     )
     parser.add_argument(
         "--excel-path",
@@ -39,15 +39,16 @@ def main():
     args = parse_cli_args()
     stage = args.stage
     excel_override = Path(args.excel_path).expanduser() if args.excel_path else None
-    raw_path = args.raw_path
+    raw_path_input = args.raw_path
+    raw_path_arg = Path(raw_path_input).expanduser() if raw_path_input else None
     debug_mode = bool(args.debug)
 
     print("=" * 60)
     print("4PT BATCH ANALYSIS PIPELINE")
     print("=" * 60)
     print(f"Selected stage: {stage.upper()}")
-    if raw_path:
-        print(f"Raw path: {raw_path}")
+    if raw_path_input:
+        print(f"Raw path: {raw_path_input}")
     if excel_override:
         print(f"Excel override: {excel_override}")
     print("=" * 60)
@@ -83,11 +84,50 @@ def main():
         print("  - Excel file exists at:", config.EXCEL_PATH)
         return 1
 
-    if stage == "parse" and not raw_path:
-        print("\n❌ Parse stage requires --raw-path to be specified")
-        return 1
-
     print("\n✅ Configuration validated")
+
+    raw_jsonl_output = None
+    parse_targets = []
+
+    if stage in {"raw", "full"}:
+        if raw_path_arg:
+            if raw_path_arg.is_dir():
+                raw_path_arg.mkdir(parents=True, exist_ok=True)
+                raw_jsonl_output = raw_path_arg / f"raw_responses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jsonl"
+                print(f"\n📁 Raw JSONL output target: {raw_jsonl_output}")
+            else:
+                raw_jsonl_output = raw_path_arg
+                print(f"\n📁 Raw JSONL output target: {raw_jsonl_output}")
+    elif stage == "parse":
+        if raw_path_arg:
+            if raw_path_arg.is_dir():
+                parse_targets = sorted(raw_path_arg.glob("*.jsonl"))
+                if not parse_targets:
+                    print(f"\n❌ No JSONL files found in directory: {raw_path_arg}")
+                    return 1
+                print(f"\n📁 Found {len(parse_targets)} JSONL file(s) in {raw_path_arg}")
+            elif raw_path_arg.is_file():
+                parse_targets = [raw_path_arg]
+                print(f"\n📁 Parsing JSONL file: {raw_path_arg}")
+            elif raw_path_arg.exists():
+                print(f"\n❌ Raw path is not a JSONL file: {raw_path_arg}")
+                return 1
+            else:
+                print(f"\n❌ Raw path not found: {raw_path_arg}")
+                return 1
+        else:
+            default_dir = config.RAW_OUTPUT_DIR
+            parse_targets = sorted(default_dir.glob("*.jsonl"))
+            if not parse_targets:
+                print(f"\n❌ No JSONL files found in default raw directory: {default_dir}")
+                return 1
+            print(f"\n📁 Using default raw directory: {default_dir} ({len(parse_targets)} JSONL file(s))")
+
+    raw_jsonl_param = None
+    if stage in {"raw", "full"}:
+        raw_jsonl_param = str(raw_jsonl_output) if raw_jsonl_output else None
+    elif stage == "parse" and len(parse_targets) == 1:
+        raw_jsonl_param = str(parse_targets[0])
 
     # 创建批量分析器
     analyzer = BatchAnalyzer(config)
@@ -97,27 +137,7 @@ def main():
     print("STARTING BATCH ANALYSIS")
     print("=" * 60)
 
-    try:
-        if stage == "raw":
-            raw_output = analyzer.process_batch(
-                excel_path=str(config.EXCEL_PATH),
-                raw_jsonl_path=raw_path,
-                stage="raw"
-            )
-            print(f"\n📦 Raw responses written to: {raw_output}")
-            print(f"\n⏰ End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            print("=" * 60)
-            print("✅ RAW GENERATION COMPLETED")
-            print("=" * 60)
-            return 0
-
-        results_df = analyzer.process_batch(
-            excel_path=str(config.EXCEL_PATH),
-            raw_jsonl_path=raw_path,
-            stage=stage
-        )
-
-        # 最终验证
+    def verify_results(results_df):
         if results_df is not None and not results_df.empty:
             print("\n" + "=" * 60)
             print("FINAL VERIFICATION")
@@ -144,6 +164,50 @@ def main():
                     print(f"  ⚠️ WARNING: Expected {expected_ai} AI rows, found {len(ai_sources)}")
         else:
             print("\n⚠️ No results dataframe produced.")
+
+    try:
+        if stage == "raw":
+            raw_output = analyzer.process_batch(
+                excel_path=str(config.EXCEL_PATH),
+                raw_jsonl_path=raw_jsonl_param,
+                stage="raw"
+            )
+            print(f"\n📦 Raw responses written to: {raw_output}")
+            print(f"\n⏰ End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            print("=" * 60)
+            print("✅ RAW GENERATION COMPLETED")
+            print("=" * 60)
+            return 0
+
+        if stage == "parse" and len(parse_targets) > 1:
+            total_runs = len(parse_targets)
+            for idx, jsonl_path in enumerate(parse_targets, start=1):
+                print("\n" + "-" * 60)
+                print(f"BATCH {idx}/{total_runs}: {jsonl_path}")
+                print("-" * 60)
+                results_df = analyzer.process_batch(
+                    excel_path=str(config.EXCEL_PATH),
+                    raw_jsonl_path=str(jsonl_path),
+                    stage="parse"
+                )
+                verify_results(results_df)
+
+                if analyzer.last_raw_jsonl_path:
+                    print(f"\n📁 Raw JSONL path: {analyzer.last_raw_jsonl_path}")
+
+                print(f"\n⏰ End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                print("=" * 60)
+                print("✅ PIPELINE COMPLETED SUCCESSFULLY")
+                print("=" * 60)
+            return 0
+
+        results_df = analyzer.process_batch(
+            excel_path=str(config.EXCEL_PATH),
+            raw_jsonl_path=raw_jsonl_param,
+            stage=stage
+        )
+
+        verify_results(results_df)
 
         if stage in {"parse", "full"} and analyzer.last_raw_jsonl_path:
             print(f"\n📁 Raw JSONL path: {analyzer.last_raw_jsonl_path}")

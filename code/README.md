@@ -27,6 +27,9 @@ python code/pipeline_main.py --stage raw --raw-path results/raw_responses/my_run
 # (Optional) Stage 2: parse a previously generated JSONL
 python code/pipeline_main.py --stage parse --raw-path results/raw_responses/my_run.jsonl
 
+# Stage 2 in batch mode: parse every JSONL in a directory (or omit --raw-path to use the default)
+python code/pipeline_main.py --stage parse --raw-path results/raw_responses
+
 # Override the Excel source if needed
 python code/pipeline_main.py --stage full --excel-path /path/to/custom.xlsx
 
