@@ -137,7 +137,7 @@ The system is organized into specialized modules following single-responsibility
 - Additional review columns:
   - `AI run agreement (Q15)` shows how strongly independent runs converged on a single type.
   - `Human vs AI (Q15)` highlights alignment (or conflict) between the majority vote and the human-coded answer.
-  - `Human vs AI (consensus)` compares the human-coded type to the Q17-Q28 consensus result.
+  - `Human vs AI (consensus)` compares the human-coded type to the majority-vote Q17-Q28 consensus.
   - `Type summary (Q15, Decision Tree, Consensus)` collates the three main type signals for quick inspection.
 
 **Running the pipeline:**

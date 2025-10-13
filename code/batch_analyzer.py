@@ -741,6 +741,7 @@ You are an expert public policy analyst reviewing sustainability research articl
 
         df_results = pd.DataFrame(results)
         df_results = self._add_derived_columns(df_results, column_mapping)
+        df_results = self._apply_human_vs_consensus(df_results, column_mapping)
         df_results = self._finalize_dataframe(df_results, df_human, column_mapping)
         self._print_summary(df_results, df_human)
         return df_results
@@ -952,12 +953,13 @@ You are an expert public policy analyst reviewing sustainability research articl
 
     def _compare_human_vs_consensus(
         self,
-        row: pd.Series,
+        human_row: pd.Series,
+        consensus_row: pd.Series,
         column_mapping: Dict[int, str],
         consensus_col: str
     ) -> str:
-        """比较人类与共识列在Q15上的一致性"""
-        consensus_value = str(row.get(consensus_col, '') or '').strip()
+        """比较人类Q15与多数投票的共识结果"""
+        consensus_value = str(consensus_row.get(consensus_col, '') or '').strip()
         if not consensus_value:
             return 'Consensus missing'
 
@@ -968,7 +970,7 @@ You are an expert public policy analyst reviewing sustainability research articl
             return 'Consensus unclear'
 
         q15_col = column_mapping.get(15)
-        human_raw = str(row.get(q15_col, '') or '').strip() if q15_col else ''
+        human_raw = str(human_row.get(q15_col, '') or '').strip() if q15_col else ''
         if not human_raw:
             return f"Human missing (Consensus={consensus_value})"
 
@@ -987,6 +989,44 @@ You are an expert public policy analyst reviewing sustainability research articl
             return f"Match within tie ({normalized_human}; Consensus={', '.join(consensus_types)})"
 
         return f"Mismatch (Human={normalized_human}, Consensus={', '.join(consensus_types)})"
+
+    def _apply_human_vs_consensus(
+        self,
+        df: pd.DataFrame,
+        column_mapping: Dict[int, str]
+    ) -> pd.DataFrame:
+        """在派生列计算后填充人类与共识的比较结果"""
+        consensus_col = 'Type consensus (Q17-Q28 summary)'
+        if consensus_col not in df.columns:
+            return df
+
+        if self.HUMAN_VS_CONSENSUS_COL not in df.columns:
+            df[self.HUMAN_VS_CONSENSUS_COL] = ''
+        else:
+            df[self.HUMAN_VS_CONSENSUS_COL] = df[self.HUMAN_VS_CONSENSUS_COL].fillna('')
+
+        for _, group in df.groupby('#'):
+            human_rows = group[group['source'] == 'human']
+            if human_rows.empty:
+                continue
+
+            human_idx = human_rows.index[0]
+            human_row = df.loc[human_idx]
+
+            majority_rows = group[group['source'].str.contains('majority-vote', na=False)]
+            if majority_rows.empty:
+                df.at[human_idx, self.HUMAN_VS_CONSENSUS_COL] = 'No AI majority'
+                continue
+
+            majority_idx = majority_rows.index[0]
+            majority_row = df.loc[majority_idx]
+            comparison = self._compare_human_vs_consensus(
+                human_row, majority_row, column_mapping, consensus_col
+            )
+            df.at[human_idx, self.HUMAN_VS_CONSENSUS_COL] = comparison
+            df.at[majority_idx, self.HUMAN_VS_CONSENSUS_COL] = comparison
+
+        return df
 
     def _compose_type_summary(
         self,
@@ -1046,13 +1086,6 @@ You are an expert public policy analyst reviewing sustainability research articl
             ),
             axis=1
         )
-        df[self.HUMAN_VS_CONSENSUS_COL] = df.apply(
-            lambda row: self._compare_human_vs_consensus(
-                row, column_mapping, type_consensus_col
-            ),
-            axis=1
-        )
-
         return df
 
     def _finalize_dataframe(
