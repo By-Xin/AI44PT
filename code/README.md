@@ -21,19 +21,19 @@ This directory contains the modular 4PT analysis system, organized into speciali
 # Run the complete two-stage pipeline (raw generation + parsing)
 python code/pipeline_main.py --stage full
 
-# (Optional) Stage 1: generate raw JSONL only
-python code/pipeline_main.py --stage raw --raw-path results/raw_responses/my_run.jsonl
+# (Optional) Stage 1: generate raw JSON bundle (per-run JSON + aggregated JSON)
+python code/pipeline_main.py --stage raw --raw-path results/raw_responses/aggregated/raw_responses_my_run.json
 
-# (Optional) Stage 2: parse a previously generated JSON/JSONL file
-python code/pipeline_main.py --stage parse --raw-path results/raw_responses/my_run.jsonl
+# (Optional) Stage 2: parse a previously generated aggregated JSON file
+python code/pipeline_main.py --stage parse --raw-path results/raw_responses/aggregated/raw_responses_my_run.json
 
-# Stage 2 in batch mode: parse every JSONL in a directory (or omit --raw-path to use the default)
-python code/pipeline_main.py --stage parse --raw-path results/raw_responses
+# Stage 2 in batch mode: parse every aggregated JSON in a directory (or omit --raw-path to use the default)
+python code/pipeline_main.py --stage parse --raw-path results/raw_responses/aggregated
 
 # (The parser also supports directories that contain only per-run *.json files)
 
-# Allow batch parse to skip any JSON/JSONL inputs that fail to load/parse
-python code/pipeline_main.py --stage parse --raw-path results/raw_responses --skip-bad
+# Allow batch parse to skip any JSON inputs that fail to load/parse
+python code/pipeline_main.py --stage parse --raw-path results/raw_responses/aggregated --skip-bad
 
 # Override the Excel source if needed
 python code/pipeline_main.py --stage full --excel-path /path/to/custom.xlsx
@@ -55,7 +55,7 @@ All configuration is now in a single file: `config.py`
 - `TEMPERATURE = 0.1` - AI randomness (0.0-1.0)
 - `DEFAULT_REASONING_EFFORT` - "low", "medium", or "high"
 - `DEFAULT_TEXT_VERBOSITY` - "low", "medium", or "high"
-- `RAW_OUTPUT_DIR` - Base directory for raw `.json` and `.jsonl` records
+- `RAW_OUTPUT_DIR` - Base directory for raw `.json` records (per-run files + aggregated exports)
 - `--debug` (CLI flag) - Forces debug mode without editing `config.py`
 
 ## Module Dependencies
@@ -85,21 +85,21 @@ pipeline_main.py
 1. **Raw generation (`--stage raw`)**
    - Reads the Excel input and source PDFs
    - Submits independent AI runs per article
-   - Writes every request/response record to both individual `.json` files and an aggregated `.jsonl` stream
+   - Writes every request/response record to both individual `.json` files and an aggregated `.json` bundle
 
 2. **Parsing (`--stage parse`)**
    - Loads the original Excel metadata
-   - Replays answers from the saved `.jsonl`
+   - Replays answers from the saved aggregated `.json`
    - Rebuilds AI rows, applies majority voting/consensus, and produces the final spreadsheet
 
-The staged approach makes the process resumable: if generation is interrupted, simply re-run `--stage parse` with the saved JSONL to reconstruct outputs without re-querying the API.
+The staged approach makes the process resumable: if generation is interrupted, simply re-run `--stage parse` with the saved aggregated JSON to reconstruct outputs without re-querying the API.
 
 ## Output
 
 Results are saved to `../results/`:
 - `analysis_results_YYYYMMDD_HHMMSS.xlsx` - Full analysis results with human + AI + majority vote rows
 - `raw_responses/*.json` - Per-run raw API responses for auditing
-- `raw_responses/raw_responses_YYYYMMDD_HHMMSS.jsonl` - Stream of all raw interactions for resumable parsing
+- `raw_responses/aggregated/raw_responses_YYYYMMDD_HHMMSS.json` - Aggregated raw interactions for resumable parsing
 
 Each Excel row now includes additional review signals:
 - `AI run agreement (Q15)` - summarizes how strongly the independent runs converged on a 4PT type.

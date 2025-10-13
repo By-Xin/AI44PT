@@ -27,14 +27,18 @@ pip install -r requirements.txt
 **Batch analysis pipeline** now supports a resumable two-stage workflow.
 
 ```bash
-# Full run: generate raw JSONL + parse into Excel
+# Full run: generate raw JSON bundle + parse into Excel
 python code/pipeline_main.py --stage full
 
-# Stage 1 only: produce raw `.jsonl` (and per-run `.json`) without parsing
-python code/pipeline_main.py --stage raw --raw-path results/raw_responses/my_run.jsonl
+# Stage 1 only: produce raw `.json` bundle (plus per-run `.json`) without parsing
+python code/pipeline_main.py --stage raw --raw-path results/raw_responses/aggregated/raw_responses_my_run.json
 
-# Stage 2 only: parse a previously generated raw file
-python code/pipeline_main.py --stage parse --raw-path results/raw_responses/my_run.jsonl
+# Stage 2 only: parse a previously generated raw file or directory
+python code/pipeline_main.py --stage parse --raw-path results/raw_responses/aggregated/raw_responses_my_run.json
+python code/pipeline_main.py --stage parse --raw-path results/raw_responses/aggregated
+
+# Optionally skip broken raw batches during parsing
+python code/pipeline_main.py --stage parse --raw-path results/raw_responses/aggregated --skip-bad
 
 # Optional: override the Excel source file
 python code/pipeline_main.py --stage full --excel-path /path/to/custom.xlsx
@@ -43,7 +47,7 @@ python code/pipeline_main.py --stage full --excel-path /path/to/custom.xlsx
 python code/pipeline_main.py --stage raw --debug
 ```
 
-If processing is interrupted, you can resume by rerunning the `parse` stage against the saved JSONL file—no need to regenerate model outputs.
+If processing is interrupted, you can resume by rerunning the `parse` stage against the saved aggregated JSON file (or the directory of per-run JSONs)—no need to regenerate model outputs.
 
 ### Configuration
 
@@ -92,12 +96,13 @@ The system is organized into specialized modules following single-responsibility
    - `BatchAnalyzer`: Main coordinator for batch analysis workflow
    - Manages article processing, PDF reading, multi-run analysis
    - Creates human/AI/majority-vote result rows
-   - Persists per-run JSON and aggregated JSONL records for resumable parsing
+   - Persists per-run JSON and aggregated JSON bundles for resumable parsing
    - Adds derived columns (Decision Tree, Type Consensus)
    - Handles OpenAI API compatibility (new vs. legacy API)
 
 6. **[pipeline_main.py](code/pipeline_main.py)**: Pipeline entry point
    - Command-line interface with `--stage` (`raw|parse|full`), `--raw-path`, `--excel-path`
+   - Optional `--skip-bad` flag lets batch parses continue when individual raw files are malformed
    - Configuration validation and display
    - Error handling and progress reporting between stages
 
@@ -112,7 +117,7 @@ The system is organized into specialized modules following single-responsibility
 - **Majority voting**: Aggregates objective questions across AI runs
 - **Decision Tree 4PT**: Auto-calculates from Q3 (problem contingency) + Q9 (utility)
 - **Type consensus**: Derives best-fit type from Q17-Q28 (per-type confidence scores)
-- Saves raw API responses as per-run JSON + aggregated JSONL for full auditing and replay
+- Saves raw API responses as per-run JSON + aggregated JSON bundles for full auditing and replay
 - Outputs comprehensive Excel with human + AI results + consensus side-by-side
 
 **Analysis questions** (28 total):
@@ -188,9 +193,9 @@ This ensures reliable extraction of 28 answers per article.
      - `DocumentReader` parses PDFs and codebook into page/section structures
      - Prompts built with codebook + article + 28 questions
      - Multiple API calls per article (configurable runs)
-     - Every request/response saved as both per-run JSON and appended to a shared JSONL file
+     - Every request/response saved as both per-run JSON and captured in an aggregated JSON bundle
    - **Parsing stage** (`--stage parse` / `--stage full` second phase)
-     - Loads raw JSONL records and rebuilds AI answer rows without re-calling the API
+     - Loads raw JSON records (single aggregated file or directory of per-run JSONs) and rebuilds AI answer rows without re-calling the API
      - `ResponseParser` extracts structured 28-answer responses
      - `MajorityVoter` aggregates across runs
      - `DecisionTreeClassifier` and `ConsensusAnalyzer` derive additional classifications
@@ -202,13 +207,13 @@ This ensures reliable extraction of 28 answers per article.
      - Majority vote consensus (1 row per article)
      - Decision Tree and Type Consensus columns
      - New agreement diagnostics (`AI run agreement`, `Human vs AI`, `Human vs AI (consensus)`, `Type summary`)
-   - Raw API responses saved in `results/raw_responses/` as individual JSON files and resumable JSONL streams
+   - Raw API responses saved in `results/raw_responses/` as individual JSON files and aggregated JSON bundles
 
 ## Important Files
 
 - **`data/processed/TheCodingTask.md`**: The definitive 4PT coding manual (essential for understanding classifications)
 - **`data/processed/JRGsamples/`**: Sample PDFs and Excel file for batch processing
-- **`results/`**: All analysis outputs (Excel, per-run JSON, aggregated JSONL)
+- **`results/`**: All analysis outputs (Excel, per-run JSON, aggregated JSON)
 - **`.env`**: Must contain `OPENAI_API_KEY`
 
 ## Notes on the 4PT Framework

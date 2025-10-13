@@ -49,7 +49,7 @@ class BatchAnalyzer:
             'pdf_error': 0,
             'analysis_error': 0
         }
-        self.last_raw_jsonl_path: Optional[Path] = None
+        self.last_raw_source_path: Optional[Path] = None
 
     def analyze_single_article(
         self,
@@ -201,7 +201,7 @@ class BatchAnalyzer:
     def process_batch(
         self,
         excel_path: str = None,
-        raw_jsonl_path: str = None,
+        raw_data_path: str = None,
         stage: str = "full"
     ):
         """
@@ -209,25 +209,25 @@ class BatchAnalyzer:
 
         Args:
             excel_path: Excel文件路径
-            raw_jsonl_path: 原始JSONL文件路径（解析阶段使用）
+            raw_data_path: 原始JSON文件路径或目录（解析阶段使用）
             stage: 处理阶段，可选 "raw"、"parse"、"full"
 
         Returns:
-            当stage为"raw"时返回JSONL路径，其余情况返回结果DataFrame
+            当stage为"raw"时返回JSON路径，其余情况返回结果DataFrame
         """
         stage = (stage or "full").lower()
 
         if stage == "raw":
-            return self.generate_raw_responses(excel_path=excel_path, jsonl_path=raw_jsonl_path)
+            return self.generate_raw_responses(excel_path=excel_path, output_path=raw_data_path)
 
         if stage == "parse":
-            if not raw_jsonl_path:
-                raise ValueError("parse stage requires raw_jsonl_path")
-            return self.parse_raw_responses(jsonl_path=raw_jsonl_path, excel_path=excel_path)
+            if not raw_data_path:
+                raise ValueError("parse stage requires raw data path")
+            return self.parse_raw_responses(json_path=raw_data_path, excel_path=excel_path)
 
         if stage == "full":
-            generated_path = self.generate_raw_responses(excel_path=excel_path, jsonl_path=raw_jsonl_path)
-            return self.parse_raw_responses(jsonl_path=str(generated_path), excel_path=excel_path)
+            generated_path = self.generate_raw_responses(excel_path=excel_path, output_path=raw_data_path)
+            return self.parse_raw_responses(json_path=str(generated_path), excel_path=excel_path)
 
         raise ValueError(f"Unsupported processing stage: {stage}")
 
@@ -324,61 +324,43 @@ You are an expert public policy analyst reviewing sustainability research articl
             print(f"  ⚠️ Failed to save raw response: {e}")
         return record
 
-    def _write_jsonl_record(self, handle, record: Dict):
-        """写入单条JSONL记录"""
-        try:
-            handle.write(json.dumps(record, ensure_ascii=False))
-            handle.write('\n')
-        except Exception as e:
-            print(f"  ⚠️ Failed to append raw JSONL record: {e}")
-
     def _load_raw_records(self, source_path: Path) -> List[Dict]:
-        """从JSON/JSONL文件或目录读取原始记录"""
+        """从JSON文件或目录读取原始记录"""
         records: List[Dict] = []
-
-        def load_jsonl_file(path: Path):
-            try:
-                with open(path, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        line = line.strip()
-                        if not line:
-                            continue
-                        try:
-                            records.append(json.loads(line))
-                        except json.JSONDecodeError as exc:
-                            print(f"  ⚠️ Skipping malformed JSON line in {path.name}: {exc}")
-            except FileNotFoundError:
-                print(f"❌ Raw JSONL file not found: {path}")
 
         def load_json_file(path: Path):
             try:
                 with open(path, 'r', encoding='utf-8') as f:
-                    records.append(json.load(f))
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        for item in data:
+                            if isinstance(item, dict):
+                                records.append(item)
+                            else:
+                                print(f"  ⚠️ Skipping non-dict entry in {path.name}")
+                    elif isinstance(data, dict):
+                        records.append(data)
+                    else:
+                        print(f"  ⚠️ Unsupported JSON structure in {path.name}")
             except FileNotFoundError:
                 print(f"❌ Raw JSON file not found: {path}")
             except json.JSONDecodeError as exc:
                 print(f"  ⚠️ Skipping malformed JSON file {path.name}: {exc}")
 
         if source_path.is_dir():
-            jsonl_files = sorted(source_path.glob("*.jsonl"))
             json_files = sorted(source_path.glob("*.json"))
 
-            if jsonl_files:
-                for jsonl_file in jsonl_files:
-                    load_jsonl_file(jsonl_file)
             if json_files:
                 for json_file in json_files:
                     load_json_file(json_file)
 
-            if not jsonl_files and not json_files:
-                print(f"❌ No JSON or JSONL files found in directory: {source_path}")
+            if not json_files:
+                print(f"❌ No JSON files found in directory: {source_path}")
 
             return records
 
         suffix = source_path.suffix.lower()
-        if suffix == ".jsonl":
-            load_jsonl_file(source_path)
-        elif suffix == ".json":
+        if suffix == ".json":
             load_json_file(source_path)
         else:
             print(f"❌ Unsupported raw data format: {source_path}")
@@ -387,9 +369,9 @@ You are an expert public policy analyst reviewing sustainability research articl
     def generate_raw_responses(
         self,
         excel_path: str = None,
-        jsonl_path: Optional[str] = None
+        output_path: Optional[str] = None
     ) -> Path:
-        """生成原始响应并保存为JSONL"""
+        """生成原始响应并保存为JSON数组"""
         excel_path = excel_path or str(self.config.EXCEL_PATH)
         print(f"\n📥 Loading Excel for raw generation: {excel_path}")
         df_human = pd.read_excel(excel_path)
@@ -403,13 +385,13 @@ You are an expert public policy analyst reviewing sustainability research articl
             print(f"Processing subset size: {article_count}")
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        if jsonl_path:
-            jsonl_path = Path(jsonl_path)
+        if output_path:
+            output_path = Path(output_path)
         else:
-            jsonl_path = self.config.RAW_OUTPUT_DIR / f"raw_responses_{timestamp}.jsonl"
-        jsonl_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path = self.config.RAW_OUTPUT_DIR / "aggregated" / f"raw_responses_{timestamp}.json"
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        print(f"\n📝 Writing raw responses to JSONL: {jsonl_path}")
+        print(f"\n📝 Writing aggregated raw responses to JSON: {output_path}")
 
         # 预加载Codebook
         cb_pages = self.document_reader.read_markdown(str(self.config.CODEBOOK_MD))
@@ -418,77 +400,81 @@ You are an expert public policy analyst reviewing sustainability research articl
         generation_stats = defaultdict(int)
         ai_runs = self.config.get_ai_runs()
 
-        with open(jsonl_path, 'w', encoding='utf-8') as jsonl_file:
-            for idx, row in df_human.iterrows():
-                article_id = row['#']
-                title = row.get('Title of the Paper', 'Unknown')
+        aggregated_records: List[Dict] = []
 
-                print(f"\n[{idx+1}/{article_count}] Generating raw for article #{article_id}: {title[:50]}...")
+        for idx, row in df_human.iterrows():
+            article_id = row['#']
+            title = row.get('Title of the Paper', 'Unknown')
 
-                article_meta = {
-                    "article_id": article_id,
-                    "title": title,
-                    "index": idx,
-                    "total": article_count,
-                    "pdf_path": None,
-                    "ai_runs": ai_runs,
-                }
+            print(f"\n[{idx+1}/{article_count}] Generating raw for article #{article_id}: {title[:50]}...")
 
-                pdf_path = self._find_pdf(article_id)
-                if not pdf_path:
-                    print("  ⚠️ PDF not found; recording error runs")
-                    generation_stats['pdf_not_found'] += 1
-                    article_meta['pdf_path'] = None
-                    for run_idx in range(ai_runs):
-                        err_record = self._build_raw_record(
-                            article_meta,
-                            run_index=run_idx + 1,
-                            prompt=None,
-                            response_text=None,
-                            api_timestamp=self._get_timestamp(),
-                            status="error",
-                            error_message="PDF not found",
-                            error_type="PDF_NOT_FOUND",
-                        )
-                        self._write_jsonl_record(jsonl_file, err_record)
-                    continue
+            article_meta = {
+                "article_id": article_id,
+                "title": title,
+                "index": idx,
+                "total": article_count,
+                "pdf_path": None,
+                "ai_runs": ai_runs,
+            }
 
-                article_meta['pdf_path'] = pdf_path
-                generation_stats['pdf_found'] += 1
-                print(f"  📄 Using PDF: {os.path.basename(pdf_path)}")
-
-                article_pages = self.document_reader.read_pdf(pdf_path)
-                if not article_pages:
-                    print("  ⚠️ Failed to read PDF; recording error runs")
-                    generation_stats['pdf_read_error'] += 1
-                    for run_idx in range(ai_runs):
-                        err_record = self._build_raw_record(
-                            article_meta,
-                            run_index=run_idx + 1,
-                            prompt=None,
-                            response_text=None,
-                            api_timestamp=self._get_timestamp(),
-                            status="error",
-                            error_message="PDF read error",
-                            error_type="PDF_READ_ERROR",
-                        )
-                        self._write_jsonl_record(jsonl_file, err_record)
-                    continue
-
-                print(f"  📖 PDF loaded: {len(article_pages)} pages")
-                print(f"  🤖 Requesting {ai_runs} raw AI runs...")
-
+            pdf_path = self._find_pdf(article_id)
+            if not pdf_path:
+                print("  ⚠️ PDF not found; recording error runs")
+                generation_stats['pdf_not_found'] += 1
+                article_meta['pdf_path'] = None
                 for run_idx in range(ai_runs):
-                    response, api_timestamp, record = self.analyze_single_article(
-                        article_pages, cb_pages, article_meta, run_index=run_idx + 1
+                    err_record = self._build_raw_record(
+                        article_meta,
+                        run_index=run_idx + 1,
+                        prompt=None,
+                        response_text=None,
+                        api_timestamp=self._get_timestamp(),
+                        status="error",
+                        error_message="PDF not found",
+                        error_type="PDF_NOT_FOUND",
                     )
-                    if record:
-                        self._write_jsonl_record(jsonl_file, record)
+                    aggregated_records.append(err_record)
+                continue
 
-                    if response:
-                        generation_stats['success'] += 1
-                    else:
-                        generation_stats['analysis_error'] += 1
+            article_meta['pdf_path'] = pdf_path
+            generation_stats['pdf_found'] += 1
+            print(f"  📄 Using PDF: {os.path.basename(pdf_path)}")
+
+            article_pages = self.document_reader.read_pdf(pdf_path)
+            if not article_pages:
+                print("  ⚠️ Failed to read PDF; recording error runs")
+                generation_stats['pdf_read_error'] += 1
+                for run_idx in range(ai_runs):
+                    err_record = self._build_raw_record(
+                        article_meta,
+                        run_index=run_idx + 1,
+                        prompt=None,
+                        response_text=None,
+                        api_timestamp=self._get_timestamp(),
+                        status="error",
+                        error_message="PDF read error",
+                        error_type="PDF_READ_ERROR",
+                    )
+                    aggregated_records.append(err_record)
+                continue
+
+            print(f"  📖 PDF loaded: {len(article_pages)} pages")
+            print(f"  🤖 Requesting {ai_runs} raw AI runs...")
+
+            for run_idx in range(ai_runs):
+                response, api_timestamp, record = self.analyze_single_article(
+                    article_pages, cb_pages, article_meta, run_index=run_idx + 1
+                )
+                if record:
+                    aggregated_records.append(record)
+
+                if response:
+                    generation_stats['success'] += 1
+                else:
+                    generation_stats['analysis_error'] += 1
+
+        with open(output_path, 'w', encoding='utf-8') as json_file:
+            json.dump(aggregated_records, json_file, ensure_ascii=False, indent=2)
 
         print("\n📦 Raw generation complete")
         print(f"  ✅ Successful API responses: {generation_stats['success']}")
@@ -496,18 +482,18 @@ You are an expert public policy analyst reviewing sustainability research articl
         print(f"  ⚠️ PDF not found: {generation_stats['pdf_not_found']}")
         print(f"  ⚠️ PDF read errors: {generation_stats['pdf_read_error']}")
 
-        self.last_raw_jsonl_path = jsonl_path
-        return jsonl_path
+        self.last_raw_source_path = output_path
+        return output_path
 
     def parse_raw_responses(
         self,
-        jsonl_path: str,
+        json_path: str,
         excel_path: str = None
     ) -> pd.DataFrame:
-        """从原始JSONL解析并生成结果"""
+        """从原始JSON记录解析并生成结果"""
         excel_path = excel_path or str(self.config.EXCEL_PATH)
-        raw_source = Path(jsonl_path)
-        self.last_raw_jsonl_path = raw_source
+        raw_source = Path(json_path)
+        self.last_raw_source_path = raw_source
 
         print(f"\n📥 Loading Excel for parsing: {excel_path}")
         df_human = pd.read_excel(excel_path)
@@ -530,8 +516,6 @@ You are an expert public policy analyst reviewing sustainability research articl
         # 读取原始记录
         if raw_source.is_dir():
             print(f"\n📂 Reading raw responses from directory: {raw_source}")
-        elif raw_source.suffix.lower() == ".jsonl":
-            print(f"\n📂 Reading raw JSONL: {raw_source}")
         elif raw_source.suffix.lower() == ".json":
             print(f"\n📂 Reading raw JSON file: {raw_source}")
         else:

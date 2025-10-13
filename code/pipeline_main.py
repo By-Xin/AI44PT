@@ -19,7 +19,7 @@ def parse_cli_args():
     parser.add_argument(
         "--raw-path",
         dest="raw_path",
-        help="Path to raw JSON/JSONL file or directory (input for parse stage, output path for raw/full stages)",
+        help="Path to raw JSON file or directory (input for parse stage, output path for raw/full stages)",
     )
     parser.add_argument(
         "--excel-path",
@@ -35,7 +35,7 @@ def parse_cli_args():
         "--skip-bad",
         dest="skip_bad",
         action="store_true",
-        help="Skip JSONL files that fail to parse (useful for batch parse runs)",
+        help="Skip JSON files that fail to parse (useful for batch parse runs)",
     )
     return parser.parse_args()
 
@@ -82,7 +82,7 @@ def main():
     print(f"   Excel Path: {config.EXCEL_PATH}")
     print(f"   Output Directory: {config.RESULTS_DIR}")
     if stage == "parse":
-        print(f"   Skip Bad JSONL: {skip_bad}")
+        print(f"   Skip Bad JSON: {skip_bad}")
 
     # 验证配置
     if not config.validate():
@@ -95,29 +95,37 @@ def main():
 
     print("\n✅ Configuration validated")
 
-    raw_jsonl_output = None
+    raw_output_path = None
     parse_targets = []
 
     if stage in {"raw", "full"}:
         if raw_path_arg:
             if raw_path_arg.is_dir():
                 raw_path_arg.mkdir(parents=True, exist_ok=True)
-                raw_jsonl_output = raw_path_arg / f"raw_responses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jsonl"
-                print(f"\n📁 Raw JSONL output target: {raw_jsonl_output}")
+                raw_output_path = raw_path_arg / f"raw_responses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jsonl"
+                print(f"\n📁 Raw output target: {raw_output_path}")
             else:
-                raw_jsonl_output = raw_path_arg
-                print(f"\n📁 Raw JSONL output target: {raw_jsonl_output}")
+                raw_output_path = raw_path_arg
+                print(f"\n📁 Raw output target: {raw_output_path}")
     elif stage == "parse":
         def _collect_parse_targets(directory: Path):
-            jsonl_files = sorted(directory.glob("*.jsonl"))
-            if jsonl_files:
-                print(f"\n📁 Found {len(jsonl_files)} JSONL file(s) in {directory}")
-                return jsonl_files
+            aggregated_dir = directory / "aggregated"
+            if aggregated_dir.exists() and aggregated_dir.is_dir():
+                aggregated_files = sorted(aggregated_dir.glob("*.json"))
+                if aggregated_files:
+                    print(f"\n📁 Found {len(aggregated_files)} aggregated JSON file(s) in {aggregated_dir}")
+                    return aggregated_files
+
+            aggregated_files = sorted(directory.glob("raw_responses_*.json"))
+            if aggregated_files:
+                print(f"\n📁 Found {len(aggregated_files)} aggregated JSON file(s) in {directory}")
+                return aggregated_files
+
             json_files = sorted(directory.glob("*.json"))
             if json_files:
                 print(f"\n📁 Found {len(json_files)} JSON file(s) in {directory}; will merge during parse")
                 return [directory]
-            print(f"\n❌ No JSON or JSONL files found in directory: {directory}")
+            print(f"\n❌ No JSON files found in directory: {directory}")
             return []
 
         if raw_path_arg:
@@ -127,7 +135,7 @@ def main():
                     return 1
             elif raw_path_arg.is_file():
                 suffix = raw_path_arg.suffix.lower()
-                if suffix in {".jsonl", ".json"}:
+                if suffix == ".json":
                     parse_targets = [raw_path_arg]
                     print(f"\n📁 Parsing raw file: {raw_path_arg}")
                 else:
@@ -143,11 +151,11 @@ def main():
                 return 1
             print(f"\n📁 Using default raw directory: {default_dir}")
 
-    raw_jsonl_param = None
+    raw_input_param = None
     if stage in {"raw", "full"}:
-        raw_jsonl_param = str(raw_jsonl_output) if raw_jsonl_output else None
+        raw_input_param = str(raw_output_path) if raw_output_path else None
     elif stage == "parse" and len(parse_targets) == 1:
-        raw_jsonl_param = str(parse_targets[0])
+        raw_input_param = str(parse_targets[0])
 
     # 创建批量分析器
     analyzer = BatchAnalyzer(config)
@@ -190,7 +198,7 @@ def main():
         if stage == "raw":
             raw_output = analyzer.process_batch(
                 excel_path=str(config.EXCEL_PATH),
-                raw_jsonl_path=raw_jsonl_param,
+                raw_data_path=raw_input_param,
                 stage="raw"
             )
             print(f"\n📦 Raw responses written to: {raw_output}")
@@ -209,7 +217,7 @@ def main():
                 try:
                     results_df = analyzer.process_batch(
                         excel_path=str(config.EXCEL_PATH),
-                        raw_jsonl_path=str(jsonl_path),
+                        raw_data_path=str(jsonl_path),
                         stage="parse"
                     )
                 except Exception as exc:
@@ -228,8 +236,8 @@ def main():
 
                 verify_results(results_df)
 
-                if analyzer.last_raw_jsonl_path:
-                    print(f"\n📁 Raw JSONL path: {analyzer.last_raw_jsonl_path}")
+                if analyzer.last_raw_source_path:
+                    print(f"\n📁 Raw source path: {analyzer.last_raw_source_path}")
 
                 print(f"\n⏰ End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
                 print("=" * 60)
@@ -247,12 +255,12 @@ def main():
         try:
             results_df = analyzer.process_batch(
                 excel_path=str(config.EXCEL_PATH),
-                raw_jsonl_path=raw_jsonl_param,
+                raw_data_path=raw_input_param,
                 stage=stage
             )
         except Exception as exc:
             if stage == "parse" and skip_bad:
-                print(f"\n❌ Failed to parse {raw_jsonl_param}: {exc}")
+                print(f"\n❌ Failed to parse {raw_input_param}: {exc}")
                 print("⏭️ Skipping per --skip-bad flag")
                 return 0
             raise
@@ -267,8 +275,8 @@ def main():
 
         verify_results(results_df)
 
-        if stage in {"parse", "full"} and analyzer.last_raw_jsonl_path:
-            print(f"\n📁 Raw JSONL path: {analyzer.last_raw_jsonl_path}")
+        if stage in {"parse", "full"} and analyzer.last_raw_source_path:
+            print(f"\n📁 Raw source path: {analyzer.last_raw_source_path}")
 
         print(f"\n⏰ End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print("=" * 60)
