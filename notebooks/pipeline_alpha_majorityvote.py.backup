@@ -17,10 +17,6 @@ from dotenv import load_dotenv
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 
-# === DEBUG MODE 配置 ===
-# 开启DEBUG模式会自动设置: REASONING_EFFORT=low, TEXT_VERBOSITY=low, PROCESS_ARTICLE_LIMIT=2, AI_RUNS=2
-DEBUG_MODE = False  # 设为True启用调试模式
-
 # === 配置 ===
 EXCEL_PATH = "/Users/xinby/Desktop/AI44PT_Desktop/data/processed/JRGsamples/JRG article sublist.xlsx"
 # EXCEL_PATH = "/Users/xinby/Desktop/AI44PT_Desktop/data/processed/JRGsamples/2sample.xlsx"
@@ -30,10 +26,6 @@ CODEBOOK_MD = "/Users/xinby/Desktop/AI44PT_Desktop/data/processed/TheCodingTask.
 OUTPUT_DIR = "/Users/xinby/Desktop/AI44PT_Desktop/results/"
 OUTPUT_EXCEL = os.path.join(OUTPUT_DIR, f"analysis_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx")
 RAW_OUTPUT_DIR = os.path.join(OUTPUT_DIR, "raw_responses")
-
-# === 文章处理数量控制 ===
-# 控制处理多少篇文章
-PROCESS_ARTICLE_LIMIT = None  # None: 处理所有文章；N: 处理前N篇；-N: 处理后N篇
 
 CLS_MODEL = "gpt-5-2025-08-07"
 # 调试模式：手动切换为True以限制样本并降低模型开销
@@ -56,14 +48,6 @@ else:
     AI_RUNS = DEFAULT_AI_RUNS
     REASONING_EFFORT = DEFAULT_REASONING_EFFORT
     TEXT_VERBOSITY = DEFAULT_TEXT_VERBOSITY
-
-# === 应用DEBUG模式设置 ===
-if DEBUG_MODE:
-    REASONING_EFFORT = "low"
-    TEXT_VERBOSITY = "low"
-    PROCESS_ARTICLE_LIMIT = 2
-    AI_RUNS = 2
-    print("🐛 DEBUG MODE ENABLED: effort=low, verbosity=low, articles=2, runs=2")
 
 # Majority Vote 配置
 ENABLE_MAJORITY_VOTE = True  # 是否启用多数投票功能
@@ -387,7 +371,7 @@ def parse_ai_response(response_text):
         print(f"    ⚠️ AI response format error: Only parsed {len(answers)}/{TOTAL_QUESTIONS} questions from structured template")
         # 返回空结果，表示解析失败
         return {}
-
+    
     # 特殊处理：提取Yes/No答案
     for q_num in [1, 3, 6, 9, 12, *TYPE_CLASS_YN_QUESTIONS]:
         if q_num in answers:
@@ -807,7 +791,7 @@ def perform_majority_vote(ai_results_list, column_mapping):
 
 def process_batch_analysis():
     """批量处理Excel中的所有文章"""
-
+    
     # 读取Excel
     print(f"Reading Excel from: {EXCEL_PATH}")
     df_human = pd.read_excel(EXCEL_PATH)
@@ -1114,7 +1098,7 @@ def process_batch_analysis():
                 # 打印投票结果摘要
                 print(f"    ✅ Majority vote completed")
                 for q_num, answer in majority_results.items():
-                    if q_num in YES_NO_QUESTIONS or q_num in [15, 16]:  # 只打印关键问题
+                    if q_num in [1, 3, 6, 9, 12, 15, 16]:  # 只打印关键问题
                         vote_count_info = vote_details.get(q_num, {}).get('vote_counts', {})
                         print(f"      Q{q_num}: {answer} (votes: {vote_count_info})")
                 for q_num in TYPE_EXTENT_QUESTIONS + TYPE_LIKERT_QUESTIONS:
@@ -1264,19 +1248,7 @@ def process_batch_analysis():
             9: "Utility focus",
             12: "Beyond self-interest",
             15: "AI Classification",
-            16: "Difficulty",
-            17: "Type 1?",
-            21: "Type 2?",
-            25: "Type 3?",
-            29: "Type 4?",
-            19: "Type 1 confidence",
-            23: "Type 2 confidence",
-            27: "Type 3 confidence",
-            31: "Type 4 confidence",
-            20: "Type 1 agreement",
-            24: "Type 2 agreement",
-            28: "Type 3 agreement",
-            32: "Type 4 agreement",
+            16: "Difficulty"
         }
         
         # 添加Decision Tree 4PT的对比
@@ -1295,7 +1267,7 @@ def process_batch_analysis():
                     print(f"  AI:    {ai_ans[:100] if ai_ans else 'N/A'}")
                     
                     # 对于Yes/No问题，标记是否一致
-                    if q_num in YES_NO_QUESTIONS:
+                    if q_num in [1, 3, 6, 9, 12]:
                         if human_ans and ai_ans and human_ans != 'N/A' and ai_ans != 'N/A':
                             match = "✅ Match" if human_ans.lower() == ai_ans.lower() else "❌ Differ"
                             print(f"  {match}")
@@ -1342,7 +1314,7 @@ def process_batch_analysis():
                 first_majority = majority_vote_rows.iloc[0]
                 article_id = first_majority['#']
                 print(f"\n   Example (Article #{article_id}):")
-                for q_num in YES_NO_QUESTIONS + [15, 16]:
+                for q_num in [1, 3, 6, 9, 12, 15, 16]:
                     if q_num in column_mapping:
                         col_name = column_mapping[q_num]
                         answer = first_majority.get(col_name, 'N/A')
@@ -1356,8 +1328,6 @@ def process_batch_analysis():
     print(f"Majority Vote Enabled: {ENABLE_MAJORITY_VOTE}")
     print(f"Objective Questions (voted): {OBJECTIVE_QUESTIONS}")
     print(f"Subjective Questions (ignored): {SUBJECTIVE_QUESTIONS}")
-    print(f"Confidence Questions (averaged): {CONFIDENCE_QUESTIONS}")
-    print(f"Likert Scale Questions (averaged): {LIKERT_QUESTIONS}")
     print(f"AI Runs per Article: {AI_RUNS}")
     print(f"Minimum Successful Runs for Voting: 2")
     
