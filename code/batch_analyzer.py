@@ -20,6 +20,7 @@ from config import Config
 from document_reader import DocumentReader
 from response_parser import ResponseParser
 from voting import MajorityVoter, ConsensusAnalyzer, DecisionTreeClassifier
+from reporting import export_excel
 
 
 class BatchAnalyzer:
@@ -522,9 +523,11 @@ You are an expert public policy analyst reviewing sustainability research articl
         self,
         json_path: str,
         excel_path: str = None,
-        use_all_runs: bool = False
+        use_all_runs: bool = False,
+        csv_output_path: Optional[str] = None,
+        json_output_path: Optional[str] = None,
     ) -> pd.DataFrame:
-        """从原始JSON记录解析并生成结果"""
+        """从原始JSON记录解析并生成结果并导出报表"""
         excel_path = excel_path or str(self.config.EXCEL_PATH)
         raw_source = Path(json_path)
         self.last_raw_source_path = raw_source
@@ -742,7 +745,35 @@ You are an expert public policy analyst reviewing sustainability research articl
         df_results = pd.DataFrame(results)
         df_results = self._add_derived_columns(df_results, column_mapping)
         df_results = self._apply_human_vs_consensus(df_results, column_mapping)
-        df_results = self._finalize_dataframe(df_results, df_human, column_mapping)
+        df_results, excel_output_path = self._finalize_dataframe(df_results, df_human, column_mapping)
+
+        _ = export_excel(
+            df_results,
+            excel_output_path,
+            article_id_column='#',
+            source_column='source',
+            title_column='Title of the Paper',
+            article_status_column='Article_Status',
+            ai_agreement_column=self.AI_AGREEMENT_COL,
+            human_vs_ai_column=self.HUMAN_VS_AI_COL,
+            human_vs_consensus_column=self.HUMAN_VS_CONSENSUS_COL,
+            type_summary_column=self.TYPE_SUMMARY_COL,
+        )
+
+        print(f"\n📊 Results saved to: {excel_output_path}")
+
+        if csv_output_path:
+            csv_path = Path(csv_output_path).expanduser()
+            csv_path.parent.mkdir(parents=True, exist_ok=True)
+            df_results.to_csv(csv_path, index=False)
+            print(f"📝 CSV export saved to: {csv_path}")
+
+        if json_output_path:
+            json_path_out = Path(json_output_path).expanduser()
+            json_path_out.parent.mkdir(parents=True, exist_ok=True)
+            df_results.to_json(json_path_out, orient='records', force_ascii=False, indent=2)
+            print(f"📝 JSON export saved to: {json_path_out}")
+
         self._print_summary(df_results, df_human)
         return df_results
 
@@ -1093,8 +1124,8 @@ You are an expert public policy analyst reviewing sustainability research articl
         df: pd.DataFrame,
         df_human: pd.DataFrame,
         column_mapping: Dict[int, str]
-    ) -> pd.DataFrame:
-        """整理DataFrame列顺序并保存"""
+    ) -> Tuple[pd.DataFrame, Path]:
+        """整理DataFrame列顺序并返回结果及输出路径"""
         # 调整列顺序
         base_cols = ['#', 'source', 'Analysis_Status']
         decision_tree_col = 'Decision Tree 4PT'
@@ -1140,13 +1171,9 @@ You are an expert public policy analyst reviewing sustainability research articl
         df = df.sort_values(['#', 'source'], ascending=[True, False])
         df = df.reset_index(drop=True)
 
-        # 保存
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         output_path = self.config.RESULTS_DIR / f"analysis_results_{timestamp}.xlsx"
-        df.to_excel(output_path, index=False)
-        print(f"\n📊 Results saved to: {output_path}")
-
-        return df
+        return df, output_path
 
     def _print_summary(self, df_results: pd.DataFrame, df_human: pd.DataFrame):
         """打印分析汇总"""
