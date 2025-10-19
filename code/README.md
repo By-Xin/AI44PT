@@ -99,13 +99,27 @@ The staged approach makes the process resumable: if generation is interrupted, s
 
 ## Output
 
-Results are saved to `../results/`:
-- `analysis_results_YYYYMMDD_HHMMSS.xlsx` - Full analysis results with human + AI + majority vote rows
-- `raw_responses/*.json` - Per-run raw API responses for auditing
-- `raw_responses/aggregated/raw_responses_YYYYMMDD_HHMMSS.json` - Aggregated raw interactions for resumable parsing
+Results are written beneath `../results/`:
 
-Each Excel row now includes additional review signals:
-- `AI run agreement (Q15)` - summarizes how strongly the independent runs converged on a 4PT type.
-- `Human vs AI (Q15)` - highlights whether the human-coded type matches the AI majority decision.
-- `Human vs AI (consensus)` - compares the human-coded type with the Q17-Q28 consensus output.
-- `Type summary (Q15, Decision Tree, Consensus)` - compact view of all type signals (direct answer, deprecated decision tree, Q17-Q28 consensus).
+- `analysis/analysis_results_YYYYMMDD_HHMMSS.xlsx` – main Excel workbook.
+- `raw_responses/*.jsonl` – per-run raw API responses for auditing.
+- `raw_responses/aggregated/raw_responses_YYYYMMDD_HHMMSS.json` – aggregated raw interactions for resumable parsing.
+
+The Excel exporter in [`reporting.py`](reporting.py) builds several sheets automatically:
+
+- **All_Results** – full table with human rows, AI runs, and majority-vote summaries.
+- **Article_Summary** – one row per article with status, agreement scores, and run counts.
+- **Correct_All**, **Error_Mismatch**, **Error_Ambiguous**, **Error_Technical** – filtered views of the summary sheet.
+
+Formatting highlights include:
+
+- Bold separators between articles and frozen headers for quick scanning.
+- Conditional fill colours on `Article_Status` (green/orange/red/grey for the four buckets above).
+- Auto-fitted column widths, enabled filters, and wrapped text to prevent truncated content.
+
+Each summary row tracks additional review signals produced during parsing:
+
+- `AI run agreement (Q15)` – summarizes how strongly the independent runs converged on a 4PT type.
+- `Human vs AI (Q15)` – highlights whether the human-coded type matches the AI majority decision.
+- `Human vs AI (consensus)` – compares the human-coded type with the Q17-Q28 consensus output.
+- `Type summary (Q15, Decision Tree, Consensus)` – compact view of all type signals (direct answer, deprecated decision tree, Q17-Q28 consensus).
