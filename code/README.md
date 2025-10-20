@@ -108,6 +108,10 @@ Results are written beneath `../results/`:
 The Excel exporter in [`reporting.py`](reporting.py) builds several sheets automatically:
 
 - **Summary** – high-level metrics (coverage, accuracy, ambiguous rate, averages), status/consensus breakdowns, a terminology glossary, and a colour legend for the status taxonomy.
+- **Confusion_Matrix** – four-type confusion tables (raw and normalised) with per-class precision/recall/F1 and the top error pairs.
+- **Agreement_Distribution** – distribution of the “AI run agreement (Q15)” labels.
+- **Ambiguity_Patterns** *(only when ambiguous cases exist)* – aggregated vote-shape patterns and article-level detail for ambiguous outcomes.
+- **Majority_Margin** – article-level majority margins and accuracy-by-bucket summaries.
 - **All_Results** – full table with human rows, AI runs, and majority-vote summaries.
 - **Article_Summary** – one row per article with status, agreement scores, and run counts.
 - **Pass_Strong**, **Pass_Weak**, **Contradiction**, **Ambiguous_Tie**, **Ambiguous_PoorCoverage**, **Technical_Failure** – per-status “错题本” tabs that duplicate the relevant rows from `All_Results` (human, majority, each run) while adding diagnostics such as `Detail Note` and `Mismatch Pair (Human→AI)`.

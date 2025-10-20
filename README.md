@@ -43,6 +43,10 @@ Key optional flags:
 Parsing always emits a timestamped Excel workbook under `results/analysis/`. The new Excel reporter (powered by `code/reporting.py`) generates:
 
 - **Summary** – headline metrics (coverage, accuracy, ambiguous rate, averages) alongside status/consensus breakdowns, a terminology glossary, and a colour legend.
+- **Confusion_Matrix** – raw/normalised four-type confusion tables with precision, recall, F1, and top error pairs.
+- **Agreement_Distribution** – counts and proportions for the “AI run agreement (Q15)” labels (Unanimous, Strong, Simple, Plurality, etc.).
+- **Ambiguity_Patterns** *(emitted when ambiguous cases exist)* – vote-shape summaries (e.g., 2-2-1) plus article-level detail.
+- **Majority_Margin** – article-level margins (top-vote minus second-vote) with accuracy by bucket.
 - **All_Results** – every row from the parser (human, individual AI runs, majority vote).
 - **Article_Summary** – one row per article with human vs AI/consensus alignment and run statistics.
 - **Pass_Strong**, **Pass_Weak**, **Contradiction**, **Ambiguous_Tie**, **Ambiguous_PoorCoverage**, **Technical_Failure** – “错题本” style sheets that copy the matching rows from `All_Results` (human, majority vote, and every run) with extra diagnostics like `Detail Note` and `Mismatch Pair (Human→AI)`.

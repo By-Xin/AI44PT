@@ -104,6 +104,14 @@ def export_excel(
         human_vs_ai_column,
     )
 
+    analytics_tables = _build_analytics_tables(
+        df_all,
+        summary_df,
+        article_status_column,
+        ai_agreement_column,
+        human_vs_ai_column,
+    )
+
     output_path = Path(output_path)
     if output_path.suffix.lower() != ".xlsx":
         output_path = output_path.with_suffix(".xlsx")
@@ -153,6 +161,12 @@ def export_excel(
             workbook,
             summary_tables,
         )
+        for sheet_name, tables in analytics_tables.items():
+            _populate_custom_sheet(
+                workbook,
+                sheet_name,
+                tables,
+            )
 
     _print_status_report(status_map, run_stats)
     return summary_df
@@ -491,6 +505,242 @@ def _build_summary_tables(
     return tables
 
 
+def _build_analytics_tables(
+    df_all: pd.DataFrame,
+    summary_df: pd.DataFrame,
+    article_status_column: str,
+    ai_agreement_column: str,
+    human_vs_ai_column: str,
+) -> Dict[str, List[Tuple[str, pd.DataFrame]]]:
+    tables: Dict[str, List[Tuple[str, pd.DataFrame]]] = {}
+
+    confusion_tables = _build_confusion_tables(summary_df)
+    if confusion_tables:
+        tables["Confusion_Matrix"] = confusion_tables
+
+    agreement_tables = _build_agreement_tables(summary_df, ai_agreement_column)
+    if agreement_tables:
+        tables["Agreement_Distribution"] = agreement_tables
+
+    ambiguity_tables = _build_ambiguity_tables(summary_df, article_status_column, ai_agreement_column)
+    if ambiguity_tables:
+        tables["Ambiguity_Patterns"] = ambiguity_tables
+
+    margin_tables = _build_margin_tables(summary_df, human_vs_ai_column)
+    if margin_tables:
+        tables["Majority_Margin"] = margin_tables
+
+    return tables
+
+
+def _build_confusion_tables(summary_df: pd.DataFrame) -> List[Tuple[str, pd.DataFrame]]:
+    if summary_df.empty:
+        return []
+
+    human_series = summary_df.get(HUMAN_Q15_TYPE_COLUMN)
+    ai_series = summary_df.get(AI_Q15_TYPE_COLUMN)
+    if human_series is None or ai_series is None:
+        return []
+
+    human_series = human_series.fillna("Unknown")
+    ai_series = ai_series.fillna("No majority")
+
+    if human_series.empty:
+        return []
+
+    labels = sorted(set(human_series.unique()).union(set(ai_series.unique())))
+
+    counts = pd.crosstab(human_series, ai_series, dropna=False).reindex(index=labels, columns=labels, fill_value=0)
+
+    def _format_percent_df(df: pd.DataFrame) -> pd.DataFrame:
+        formatted = df.copy()
+        for col in formatted.columns:
+            formatted[col] = formatted[col].apply(lambda x: f"{x * 100:.1f}%")
+        formatted.index.name = df.index.name
+        formatted.columns.name = df.columns.name
+        return formatted
+
+    row_sum = counts.sum(axis=1).replace(0, pd.NA)
+    row_norm = counts.div(row_sum, axis=0).fillna(0.0)
+    col_sum = counts.sum(axis=0).replace(0, pd.NA)
+    col_norm = counts.div(col_sum, axis=1).fillna(0.0)
+
+    metrics_rows = []
+    recalls = []
+    f1_scores = []
+    for label in labels:
+        tp = counts.at[label, label] if label in counts.columns else 0
+        actual = counts.loc[label].sum()
+        predicted = counts[label].sum() if label in counts.columns else 0
+        recall = tp / actual if actual else None
+        precision = tp / predicted if predicted else None
+        if precision is not None and recall is not None and (precision + recall) > 0:
+            f1 = 2 * precision * recall / (precision + recall)
+        else:
+            f1 = None
+        metrics_rows.append(
+            {
+                "Type": label,
+                "Support (human)": actual,
+                "Predicted (AI)": predicted,
+                "Precision": _format_percentage(precision) if precision is not None else "N/A",
+                "Recall": _format_percentage(recall) if recall is not None else "N/A",
+                "F1": _format_percentage(f1) if f1 is not None else "N/A",
+            }
+        )
+        if recall is not None:
+            recalls.append(recall)
+        if f1 is not None:
+            f1_scores.append(f1)
+
+    macro_recall = sum(recalls) / len(recalls) if recalls else None
+    macro_f1 = sum(f1_scores) / len(f1_scores) if f1_scores else None
+    metrics_rows.append(
+        {
+            "Type": "Macro Average",
+            "Support (human)": counts.values.sum(),
+            "Predicted (AI)": counts.values.sum(),
+            "Precision": "—",
+            "Recall": _format_percentage(macro_recall) if macro_recall is not None else "N/A",
+            "F1": _format_percentage(macro_f1) if macro_f1 is not None else "N/A",
+        }
+    )
+
+    top_errors_rows = []
+    for human_label in labels:
+        for ai_label in labels:
+            if human_label == ai_label:
+                continue
+            count = counts.at[human_label, ai_label]
+            if count > 0:
+                top_errors_rows.append({"Human Type": human_label, "AI Type": ai_label, "Count": count})
+    top_errors_df = pd.DataFrame(top_errors_rows)
+    if not top_errors_df.empty:
+        top_errors_df = top_errors_df.sort_values("Count", ascending=False).reset_index(drop=True)
+
+    tables = [
+        ("Confusion matrix (counts)", counts.reset_index().rename(columns={counts.index.name or "row_0": "Human Type"})),
+        (
+            "Row-normalised (%)",
+            _format_percent_df(row_norm).reset_index().rename(columns={row_norm.index.name or "index": "Human Type"}),
+        ),
+        (
+            "Column-normalised (%)",
+            _format_percent_df(col_norm).reset_index().rename(columns={col_norm.index.name or "index": "Human Type"}),
+        ),
+        ("Per-class metrics", pd.DataFrame(metrics_rows)),
+    ]
+    if not top_errors_df.empty:
+        tables.append(("Top error pairs", top_errors_df))
+    return tables
+
+
+def _build_agreement_tables(summary_df: pd.DataFrame, ai_agreement_column: str) -> List[Tuple[str, pd.DataFrame]]:
+    agreement_series = summary_df.get(ai_agreement_column)
+    if agreement_series is None or agreement_series.empty:
+        return []
+    counts = agreement_series.fillna("Missing").value_counts().reset_index()
+    counts.columns = ["Agreement strength", "Articles"]
+    total = counts["Articles"].sum()
+    counts["Share"] = counts["Articles"].apply(lambda x: _format_ratio(int(x), int(total)))
+    return [("AI run agreement distribution", counts)]
+
+
+def _build_ambiguity_tables(
+    summary_df: pd.DataFrame,
+    article_status_column: str,
+    ai_agreement_column: str,
+) -> List[Tuple[str, pd.DataFrame]]:
+    if article_status_column not in summary_df.columns:
+        return []
+    ambiguous_mask = summary_df[article_status_column].isin(["Ambiguous_Tie", "Ambiguous_PoorCoverage"])
+    ambiguous_df = summary_df[ambiguous_mask].copy()
+    if ambiguous_df.empty:
+        return []
+
+    patterns = []
+    for _, row in ambiguous_df.iterrows():
+        vote_text = str(row.get(Q15_VOTE_COUNTS_COLUMN, "") or "")
+        pattern_key, top_votes, second_votes = _summarise_vote_pattern(vote_text)
+        patterns.append(
+            {
+                "Article #": row.get("#"),
+                "Article_Status": row.get(article_status_column),
+                "AI run agreement (Q15)": row.get(ai_agreement_column),
+                "Vote counts": vote_text,
+                "Pattern": pattern_key,
+                "Margin": top_votes - second_votes,
+            }
+        )
+    pattern_df = pd.DataFrame(patterns)
+
+    pattern_summary = (
+        pattern_df.groupby("Pattern")
+        .size()
+        .reset_index(name="Articles")
+        .sort_values("Articles", ascending=False)
+    )
+    total = pattern_summary["Articles"].sum()
+    pattern_summary["Share"] = pattern_summary["Articles"].apply(lambda x: _format_ratio(int(x), int(total)))
+
+    return [
+        ("Ambiguous vote patterns", pattern_summary),
+        ("Ambiguous article details", pattern_df),
+    ]
+
+
+def _build_margin_tables(summary_df: pd.DataFrame, human_vs_ai_column: str) -> List[Tuple[str, pd.DataFrame]]:
+    if summary_df.empty:
+        return []
+    margin_rows = []
+    for _, row in summary_df.iterrows():
+        vote_text = str(row.get(Q15_VOTE_COUNTS_COLUMN, "") or "")
+        pattern_key, top_votes, second_votes = _summarise_vote_pattern(vote_text)
+        total_votes = top_votes + second_votes
+        margin = top_votes - second_votes
+        normalized_margin = (margin / total_votes) if total_votes else None
+        match_label = str(row.get(human_vs_ai_column, "") or "")
+        is_match = match_label.lower().startswith("match")
+        margin_rows.append(
+            {
+                "Article #": row.get("#"),
+                "Human vs AI (Q15)": match_label,
+                "Vote counts": vote_text,
+                "Margin": margin,
+                "Normalised margin": normalized_margin,
+                "Pattern": pattern_key,
+                "Match": "Yes" if is_match else "No",
+            }
+        )
+
+    margin_df = pd.DataFrame(margin_rows)
+    if margin_df.empty:
+        return []
+
+    def _bucket_margin(value: int) -> str:
+        if value <= 0:
+            return "0 (tie)"
+        if value == 1:
+            return "1"
+        return "≥2"
+
+    margin_df["Margin bucket"] = margin_df["Margin"].apply(lambda x: _bucket_margin(int(x) if pd.notna(x) else 0))
+
+    bucket_summary = (
+        margin_df.groupby("Margin bucket")
+        .agg(Articles=("Article #", "count"), Matches=("Match", lambda s: (s == "Yes").sum()))
+        .reset_index()
+    )
+    bucket_summary["Accuracy"] = bucket_summary.apply(
+        lambda row: _format_ratio(int(row["Matches"]), int(row["Articles"])), axis=1
+    )
+
+    return [
+        ("Margin buckets", bucket_summary[["Margin bucket", "Articles", "Accuracy"]]),
+        ("Article-level margins", margin_df),
+    ]
+
+
 def _populate_summary_sheet(workbook, tables: List[Tuple[str, pd.DataFrame]]) -> None:
     if not tables:
         return
@@ -561,6 +811,60 @@ def _populate_summary_sheet(workbook, tables: List[Tuple[str, pd.DataFrame]]) ->
                 cell.alignment = Alignment(vertical="top", wrap_text=True)
 
 
+def _populate_custom_sheet(
+    workbook,
+    sheet_name: str,
+    tables: List[Tuple[str, pd.DataFrame]],
+) -> None:
+    if sheet_name in workbook.sheetnames:
+        ws_existing = workbook[sheet_name]
+        workbook.remove(ws_existing)
+    ws = workbook.create_sheet(sheet_name)
+    current_row = 1
+    for title, table_df in tables:
+        ws.cell(row=current_row, column=1, value=title).font = Font(bold=True, size=12)
+        current_row += 1
+
+        if table_df.empty:
+            ws.cell(row=current_row, column=1, value="(no data available)")
+            current_row += 2
+            continue
+
+        header_row = current_row
+        for col_idx, column_name in enumerate(table_df.columns, start=1):
+            cell = ws.cell(row=header_row, column=col_idx, value=column_name)
+            cell.font = Font(bold=True)
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+        for _, row in table_df.iterrows():
+            current_row += 1
+            for col_idx, column_name in enumerate(table_df.columns, start=1):
+                ws.cell(row=current_row, column=col_idx, value=row[column_name])
+
+        current_row += 2
+
+    # Auto width
+    for column_cells in ws.columns:
+        max_length = 0
+        column_letter = get_column_letter(column_cells[0].column)
+        for cell in column_cells:
+            value = cell.value
+            if value is None:
+                continue
+            text = str(value)
+            if "\n" in text:
+                text = max(text.splitlines(), key=len)
+            max_length = max(max_length, len(text))
+        ws.column_dimensions[column_letter].width = max(12, min(max_length + 2, 80))
+
+    ws.freeze_panes = "A2"
+
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=ws.max_column):
+        for cell in row:
+            if cell.alignment is None or not cell.alignment.wrap_text:
+                cell.alignment = Alignment(vertical="top", wrap_text=True)
+
+
 def _format_ratio(numerator: Optional[int], denominator: Optional[int]) -> str:
     numerator = int(numerator or 0)
     denominator = int(denominator or 0)
@@ -574,6 +878,43 @@ def _format_percentage(value: Optional[float]) -> str:
     if value is None:
         return "N/A"
     return f"{value * 100:.1f}%" if 0 <= value <= 1 else f"{value:.1f}"
+
+
+def _summarise_vote_pattern(vote_text: str) -> Tuple[str, int, int]:
+    parsed = _parse_vote_counts(vote_text)
+    if not parsed:
+        return ("(no data)", 0, 0)
+    sorted_counts = sorted(parsed, key=lambda item: (-item[1], item[0]))
+    top_votes = sorted_counts[0][1]
+    second_votes = sorted_counts[1][1] if len(sorted_counts) > 1 else 0
+    pattern_repr = " | ".join(f"{label}:{count}" for label, count in sorted_counts)
+    return pattern_repr, top_votes, second_votes
+
+
+def _parse_vote_counts(text: str) -> List[Tuple[str, int]]:
+    if not text:
+        return []
+    counts: List[Tuple[str, int]] = []
+    for part in str(text).split(","):
+        part = part.strip()
+        if not part:
+            continue
+        match = re.search(r"(Type\s*\d+).*?(\d+)$", part, re.IGNORECASE)
+        if match:
+            label = match.group(1).title().replace(" ", " ")
+            count = int(match.group(2))
+            counts.append((label, count))
+            continue
+        # fallback: look for last colon
+        if ":" in part:
+            label_text, count_text = part.rsplit(":", 1)
+            label = label_text.strip()
+            try:
+                count = int(count_text.strip())
+            except ValueError:
+                continue
+            counts.append((label, count))
+    return counts
 
 
 def _prepare_article_detail_rows(

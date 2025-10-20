@@ -22,6 +22,7 @@ Store credentials like `OPENAI_API_KEY` in `.env` and keep that file out of vers
 - Enriched Excel reporting: `Article_Summary` now includes human/AI Q15 labels, vote counts, run success metrics, and per-type extent/Likert averages; majority rows in `All_Results` carry the same stats.
 - Added per-status detail sheets（错题本） that list the human row, majority vote, and every run for each article, including `Detail Note` and `Mismatch Pair (Human→AI)` columns.
 - Introduced a `Summary` sheet with headline metrics (coverage, accuracy, ambiguous rate), status/consensus breakdowns, glossary entries, and a colour legend.
+- Added analytics sheets: `Confusion_Matrix`, `Agreement_Distribution`, optional `Ambiguity_Patterns`, and `Majority_Margin` for single-run diagnostics.
 - Refined `Article_Status` taxonomy (`Pass_Strong`, `Pass_Weak`, `Contradiction`, `Ambiguous_Tie`, `Ambiguous_PoorCoverage`, `Technical_Failure`) with updated colour mapping and per-status sheets.
 - Updated `README.md` 和 `code/README.md` 以说明新增摘要字段和报表内容。
 - Smoke test：`conda activate NLP && python code/pipeline_main.py --stage parse --raw-path results/raw_responses/filtered_251013 --debug` ✅（解析通过，Excel 导出成功）。
