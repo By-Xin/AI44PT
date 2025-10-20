@@ -20,7 +20,13 @@ from config import Config
 from document_reader import DocumentReader
 from response_parser import ResponseParser
 from voting import MajorityVoter, ConsensusAnalyzer, DecisionTreeClassifier
-from reporting import export_excel
+from reporting import (
+    export_excel,
+    AI_SUCCESS_COUNT_COLUMN,
+    AI_TOTAL_COUNT_COLUMN,
+    AI_SUCCESS_RATE_COLUMN,
+    Q15_VOTE_COUNTS_COLUMN,
+)
 
 
 class BatchAnalyzer:
@@ -30,6 +36,10 @@ class BatchAnalyzer:
     HUMAN_VS_AI_COL = 'Human vs AI (Q15)'
     TYPE_SUMMARY_COL = 'Type summary (Q15, Decision Tree, Consensus)'
     HUMAN_VS_CONSENSUS_COL = 'Human vs AI (consensus)'
+    AI_SUCCESS_COUNT_COL = AI_SUCCESS_COUNT_COLUMN
+    AI_TOTAL_COUNT_COL = AI_TOTAL_COUNT_COLUMN
+    AI_SUCCESS_RATE_COL = AI_SUCCESS_RATE_COLUMN
+    Q15_VOTE_COUNTS_COL = Q15_VOTE_COUNTS_COLUMN
 
     def __init__(self, config: Config = None):
         """
@@ -705,6 +715,18 @@ You are an expert public policy analyst reviewing sustainability research articl
             if ai_agreement_label:
                 human_row[self.AI_AGREEMENT_COL] = ai_agreement_label
 
+            vote_counts_text = self._format_q15_vote_counts(vote_details)
+            success_rate_value: Optional[float]
+            if actual_run_count:
+                success_rate_value = round(ai_success_count / actual_run_count, 3)
+            else:
+                success_rate_value = ''
+
+            human_row[self.AI_SUCCESS_COUNT_COL] = ai_success_count
+            human_row[self.AI_TOTAL_COUNT_COL] = actual_run_count
+            human_row[self.AI_SUCCESS_RATE_COL] = success_rate_value
+            human_row[self.Q15_VOTE_COUNTS_COL] = vote_counts_text
+
             # 多数票
             if (self.config.ENABLE_MAJORITY_VOTE and
                 actual_run_count > 1 and
@@ -716,6 +738,10 @@ You are an expert public policy analyst reviewing sustainability research articl
                 if vote_output:
                     majority_row, majority_metadata = vote_output
                     majority_row[self.AI_AGREEMENT_COL] = ai_agreement_label
+                    majority_row[self.AI_SUCCESS_COUNT_COL] = ai_success_count
+                    majority_row[self.AI_TOTAL_COUNT_COL] = actual_run_count
+                    majority_row[self.AI_SUCCESS_RATE_COL] = success_rate_value
+                    majority_row[self.Q15_VOTE_COUNTS_COL] = vote_counts_text
                     results.append(majority_row)
 
                     human_value = human_row.get(q15_col, '') if q15_col else ''
@@ -826,6 +852,10 @@ You are an expert public policy analyst reviewing sustainability research articl
             ai_row[self.AI_AGREEMENT_COL] = ''
             ai_row[self.HUMAN_VS_AI_COL] = ''
             ai_row[self.HUMAN_VS_CONSENSUS_COL] = ''
+            ai_row[self.AI_SUCCESS_COUNT_COL] = ''
+            ai_row[self.AI_TOTAL_COUNT_COL] = ''
+            ai_row[self.AI_SUCCESS_RATE_COL] = ''
+            ai_row[self.Q15_VOTE_COUNTS_COL] = ''
             rows.append(ai_row)
         return rows
 
@@ -857,6 +887,10 @@ You are an expert public policy analyst reviewing sustainability research articl
         ai_row[self.AI_AGREEMENT_COL] = ''
         ai_row[self.HUMAN_VS_AI_COL] = ''
         ai_row[self.HUMAN_VS_CONSENSUS_COL] = ''
+        ai_row[self.AI_SUCCESS_COUNT_COL] = ''
+        ai_row[self.AI_TOTAL_COUNT_COL] = ''
+        ai_row[self.AI_SUCCESS_RATE_COL] = ''
+        ai_row[self.Q15_VOTE_COUNTS_COL] = ''
         return ai_row
 
     def _create_majority_vote_row(
@@ -913,6 +947,10 @@ You are an expert public policy analyst reviewing sustainability research articl
         majority_row[self.AI_AGREEMENT_COL] = ''
         majority_row[self.HUMAN_VS_AI_COL] = ''
         majority_row[self.HUMAN_VS_CONSENSUS_COL] = ''
+        majority_row[self.AI_SUCCESS_COUNT_COL] = ''
+        majority_row[self.AI_TOTAL_COUNT_COL] = ''
+        majority_row[self.AI_SUCCESS_RATE_COL] = ''
+        majority_row[self.Q15_VOTE_COUNTS_COL] = ''
         metadata = {
             "majority_results": majority_results,
             "vote_details": vote_details,
@@ -956,6 +994,17 @@ You are an expert public policy analyst reviewing sustainability research articl
 
         detail_text = ", ".join(f"{ans}:{cnt}" for ans, cnt in sorted_counts)
         return f"{label} ({detail_text})"
+
+    def _format_q15_vote_counts(self, vote_details: Dict[int, Dict]) -> str:
+        """格式化Q15投票计数字符串"""
+        detail = vote_details.get(15) if vote_details else None
+        if not detail:
+            return ''
+        vote_counts = detail.get('vote_counts') or {}
+        if not vote_counts:
+            return ''
+        sorted_counts = sorted(vote_counts.items(), key=lambda item: (-item[1], item[0]))
+        return ", ".join(f"{answer}:{count}" for answer, count in sorted_counts)
 
     def _compare_human_vs_ai_q15(self, human_value: str, ai_value: str) -> str:
         """比较人类与多数投票在Q15上的一致性"""
@@ -1137,6 +1186,10 @@ You are an expert public policy analyst reviewing sustainability research articl
             self.HUMAN_VS_AI_COL,
             self.HUMAN_VS_CONSENSUS_COL,
             self.TYPE_SUMMARY_COL,
+            self.AI_SUCCESS_COUNT_COL,
+            self.AI_TOTAL_COUNT_COL,
+            self.AI_SUCCESS_RATE_COL,
+            self.Q15_VOTE_COUNTS_COL,
         ]
 
         q15_col = column_mapping.get(15)

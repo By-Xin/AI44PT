@@ -42,14 +42,30 @@ Key optional flags:
 
 Parsing always emits a timestamped Excel workbook under `results/analysis/`. The new Excel reporter (powered by `code/reporting.py`) generates:
 
+- **Summary** – headline metrics (coverage, accuracy, ambiguous rate, averages) alongside status/consensus breakdowns, a terminology glossary, and a colour legend.
 - **All_Results** – every row from the parser (human, individual AI runs, majority vote).
 - **Article_Summary** – one row per article with human vs AI/consensus alignment and run statistics.
-- **Correct_All**, **Error_Mismatch**, **Error_Ambiguous**, **Error_Technical** – filtered copies of `Article_Summary` grouped by outcome.
+- **Pass_Strong**, **Pass_Weak**, **Contradiction**, **Ambiguous_Tie**, **Ambiguous_PoorCoverage**, **Technical_Failure** – “错题本” style sheets that copy the matching rows from `All_Results` (human, majority vote, and every run) with extra diagnostics like `Detail Note` and `Mismatch Pair (Human→AI)`.
+
+Status definitions:
+
+- `Pass_Strong`: human label matches the AI majority and the AI runs are Unanimous or Strong majority.
+- `Pass_Weak`: human label matches the AI majority, but the internal consensus is only a Simple majority (or weaker).
+- `Contradiction`: AI majority Q15 classification conflicts with the human label.
+- `Ambiguous_Tie`: the AI runs end in a tie or split consensus, so no clear majority is available.
+- `Ambiguous_PoorCoverage`: insufficient evidence for a reliable conclusion (single run, plurality, missing data, or majority vote disabled).
+- `Technical_Failure`: every AI run failed (PDF/read/API errors), leaving no usable output.
+
+Article-level summary rows now include:
+
+- Human/majority Q15 types, majority vote counts, and run success rates.
+- Automatically computed averages for each type’s extent (Q18/21/24/27) and Likert (Q19/22/25/28) signals.
 
 Each sheet includes the following formatting:
 
 - Article boundaries separated by bold top borders.
-- `Article_Status` cells coloured green/orange/red/grey for the four buckets above.
+- `Article_Status` cells coloured to distinguish strong/weak passes (greens), ambiguous outcomes (oranges), contradictions (red), and technical failures (grey), with thick separators between articles on every detail sheet.
+- “Summary” sheet titles and legend rows are styled for quick scanning, with status chips reusing the same colour palette.
 - Auto-sized columns, frozen headers, filters, and wrapped text for readability.
 
 CSV and JSON exports remain available: pass `--stage parse --raw-path ... --debug` (or any other flag combination) and the pipeline will write companion files beside the Excel workbook when `BatchAnalyzer.parse_raw_responses` is invoked programmatically with `csv_output_path` or `json_output_path`.

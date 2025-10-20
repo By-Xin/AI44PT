@@ -107,15 +107,27 @@ Results are written beneath `../results/`:
 
 The Excel exporter in [`reporting.py`](reporting.py) builds several sheets automatically:
 
+- **Summary** – high-level metrics (coverage, accuracy, ambiguous rate, averages), status/consensus breakdowns, a terminology glossary, and a colour legend for the status taxonomy.
 - **All_Results** – full table with human rows, AI runs, and majority-vote summaries.
 - **Article_Summary** – one row per article with status, agreement scores, and run counts.
-- **Correct_All**, **Error_Mismatch**, **Error_Ambiguous**, **Error_Technical** – filtered views of the summary sheet.
+- **Pass_Strong**, **Pass_Weak**, **Contradiction**, **Ambiguous_Tie**, **Ambiguous_PoorCoverage**, **Technical_Failure** – per-status “错题本” tabs that duplicate the relevant rows from `All_Results` (human, majority, each run) while adding diagnostics such as `Detail Note` and `Mismatch Pair (Human→AI)`.
+
+Status glossary:
+
+- `Pass_Strong` – human label matches the AI majority and the runs are Unanimous / Strong majority.
+- `Pass_Weak` – human label matches the AI majority, but agreement strength is only Simple majority (or weaker).
+- `Contradiction` – human label conflicts with the AI majority decision.
+- `Ambiguous_Tie` – AI runs produce a tie / split consensus, so no decisive majority.
+- `Ambiguous_PoorCoverage` – insufficient evidence (plurality, missing data, single run, or majority voting disabled).
+- `Technical_Failure` – no successful AI runs (PDF/read/API errors).
+
+`Article_Summary` enriches each article row with the human/majority Q15 labels, Q15 vote breakdown, success/total run counts (and success rate), plus per-type averages for extent (Q18/21/24/27) and Likert (Q19/22/25/28) scores. The majority rows in `All_Results` carry the same run statistics for quick reference.
 
 Formatting highlights include:
 
 - Bold separators between articles and frozen headers for quick scanning.
-- Conditional fill colours on `Article_Status` (green/orange/red/grey for the four buckets above).
-- Auto-fitted column widths, enabled filters, and wrapped text to prevent truncated content.
+- Conditional fill colours on `Article_Status` (two shades of green for passes, orange variants for ambiguous cases, red for contradictions, grey for technical failures) plus thick separators between articles on both overview and detail sheets.
+- Auto-fitted column widths, enabled filters, and wrapped text to prevent truncated content, with the Summary sheet titles/legend styled for rapid scanning.
 
 Each summary row tracks additional review signals produced during parsing:
 
