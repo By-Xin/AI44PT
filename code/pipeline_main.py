@@ -199,8 +199,17 @@ def main():
                 if expected_runs is None:
                     expected_runs = config.get_ai_runs()
 
+                tie_detected = False
+                human_rows = article_rows[article_rows['source'] == 'human']
+                if not human_rows.empty:
+                    human_record = human_rows.iloc[0]
+                    ai_agreement = str(human_record.get(analyzer.AI_AGREEMENT_COL, '') or '').lower()
+                    human_vs_ai_text = str(human_record.get(analyzer.HUMAN_VS_AI_COL, '') or '').lower()
+                    if 'split consensus' in ai_agreement or 'tie' in human_vs_ai_text:
+                        tie_detected = True
+
                 expected_ai = expected_runs
-                if config.ENABLE_MAJORITY_VOTE and expected_runs > 1:
+                if (config.ENABLE_MAJORITY_VOTE and expected_runs > 1 and not tie_detected):
                     expected_ai += 1  # +1 for majority vote row
 
                 if len(ai_sources) != expected_ai:

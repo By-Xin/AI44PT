@@ -627,7 +627,7 @@ You are an expert public policy analyst reviewing sustainability research articl
                 continue
 
             configured_runs = self.config.get_ai_runs()
-            run_record_map: Dict[int, Dict] = {}
+            run_record_map: Dict[int, List[Dict]] = defaultdict(list)
             for record in article_records:
                 run_idx = record.get('run_index')
                 if run_idx is None:
@@ -644,30 +644,36 @@ You are an expert public policy analyst reviewing sustainability research articl
                         continue
                 if not isinstance(run_idx, int):
                     continue
-                if run_idx not in run_record_map:
-                    run_record_map[run_idx] = record
+                run_record_map[run_idx].append(record)
 
+            run_entries: List[Tuple[int, Optional[Dict]]] = []
             if use_all_runs and run_record_map:
-                run_indices = sorted(run_record_map.keys())
+                for run_number in sorted(run_record_map.keys()):
+                    for record in run_record_map[run_number]:
+                        run_entries.append((run_number, record))
             else:
-                run_indices = list(range(1, configured_runs + 1))
+                for run_number in range(1, configured_runs + 1):
+                    candidates = run_record_map.get(run_number, [])
+                    record = candidates[0] if candidates else None
+                    run_entries.append((run_number, record))
 
-            if not run_indices:
-                run_indices = list(range(1, configured_runs + 1))
+            if not run_entries:
+                run_entries = [(run_number, None) for run_number in range(1, configured_runs + 1)]
 
-            actual_run_count = len(run_indices)
+            actual_run_count = len(run_entries)
             self.last_parse_run_counts[article_id] = actual_run_count
 
             ai_answer_sets = []
             ai_success_count = 0
+            ai_rows_for_article: List[Dict] = []
 
-            for pos_idx, run_number in enumerate(run_indices):
-                record = run_record_map.get(run_number)
+            for pos_idx, (run_number, record) in enumerate(run_entries):
                 if not record:
                     print(f"  ⚠️ Missing raw record for run {run_number}; inserting placeholder")
                     placeholder_ts = self._get_timestamp()
                     ai_row = self._create_ai_row(row, pos_idx, None, placeholder_ts, column_mapping)
                     ai_row['Analysis_Status'] = f'RAW_MISSING_RUN{run_number}_{placeholder_ts}'
+                    ai_rows_for_article.append(ai_row)
                     results.append(ai_row)
                     self.stats['analysis_error'] += 1
                     continue
@@ -700,6 +706,7 @@ You are an expert public policy analyst reviewing sustainability research articl
                     else:
                         self.stats['analysis_error'] += 1
 
+                ai_rows_for_article.append(ai_row)
                 results.append(ai_row)
 
             # 计算投票细节以评估一致性
@@ -714,8 +721,11 @@ You are an expert public policy analyst reviewing sustainability research articl
             ai_agreement_label = self._summarize_q15_agreement(vote_details, ai_success_count)
             if ai_agreement_label:
                 human_row[self.AI_AGREEMENT_COL] = ai_agreement_label
+                for ai_row in ai_rows_for_article:
+                    ai_row[self.AI_AGREEMENT_COL] = ai_agreement_label
 
-            vote_counts_text = self._format_q15_vote_counts(vote_details)
+            q15_tie = self._is_q15_tie(vote_details)
+            vote_counts_text = self._format_q15_vote_counts(vote_details, is_tie=q15_tie)
             success_rate_value: Optional[float]
             if actual_run_count:
                 success_rate_value = round(ai_success_count / actual_run_count, 3)
@@ -728,7 +738,9 @@ You are an expert public policy analyst reviewing sustainability research articl
             human_row[self.Q15_VOTE_COUNTS_COL] = vote_counts_text
 
             # 多数票
-            if (self.config.ENABLE_MAJORITY_VOTE and
+            if q15_tie:
+                human_row[self.HUMAN_VS_AI_COL] = 'Tie (no AI majority)'
+            elif (self.config.ENABLE_MAJORITY_VOTE and
                 actual_run_count > 1 and
                 ai_success_count >= 2):
                 vote_output = self._create_majority_vote_row(
@@ -995,7 +1007,12 @@ You are an expert public policy analyst reviewing sustainability research articl
         detail_text = ", ".join(f"{ans}:{cnt}" for ans, cnt in sorted_counts)
         return f"{label} ({detail_text})"
 
-    def _format_q15_vote_counts(self, vote_details: Dict[int, Dict]) -> str:
+    def _format_q15_vote_counts(
+        self,
+        vote_details: Dict[int, Dict],
+        *,
+        is_tie: bool = False
+    ) -> str:
         """格式化Q15投票计数字符串"""
         detail = vote_details.get(15) if vote_details else None
         if not detail:
@@ -1004,7 +1021,10 @@ You are an expert public policy analyst reviewing sustainability research articl
         if not vote_counts:
             return ''
         sorted_counts = sorted(vote_counts.items(), key=lambda item: (-item[1], item[0]))
-        return ", ".join(f"{answer}:{count}" for answer, count in sorted_counts)
+        counts_text = ", ".join(f"{answer}:{count}" for answer, count in sorted_counts)
+        if is_tie:
+            return f"Tie ({counts_text})"
+        return counts_text
 
     def _compare_human_vs_ai_q15(self, human_value: str, ai_value: str) -> str:
         """比较人类与多数投票在Q15上的一致性"""
@@ -1030,6 +1050,22 @@ You are an expert public policy analyst reviewing sustainability research articl
             return f"Match ({normalized_ai})"
 
         return f"Mismatch (Human={normalized_human}, AI={normalized_ai})"
+
+    def _is_q15_tie(self, vote_details: Dict[int, Dict]) -> bool:
+        """判断Q15是否出现平票"""
+        if not vote_details:
+            return False
+        detail = vote_details.get(15)
+        if not detail:
+            return False
+        counts = detail.get('vote_counts')
+        if not counts:
+            return False
+        max_count = max(counts.values())
+        if max_count == 0:
+            return False
+        tied = sum(1 for value in counts.values() if value == max_count)
+        return tied > 1
 
     def _compare_human_vs_consensus(
         self,
@@ -1095,7 +1131,11 @@ You are an expert public policy analyst reviewing sustainability research articl
 
             majority_rows = group[group['source'].str.contains('majority-vote', na=False)]
             if majority_rows.empty:
-                df.at[human_idx, self.HUMAN_VS_CONSENSUS_COL] = 'No AI majority'
+                agreement_text = str(human_row.get(self.AI_AGREEMENT_COL, '') or '').lower()
+                if 'split consensus' in agreement_text or 'tie' in agreement_text:
+                    df.at[human_idx, self.HUMAN_VS_CONSENSUS_COL] = 'Tie (no AI majority)'
+                else:
+                    df.at[human_idx, self.HUMAN_VS_CONSENSUS_COL] = 'No AI majority'
                 continue
 
             majority_idx = majority_rows.index[0]

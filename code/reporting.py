@@ -212,6 +212,11 @@ def _build_article_summary(
         ai_majority_q15 = ""
         if majority_row is not None and q15_col:
             ai_majority_q15 = str(majority_row.get(q15_col, "") or "").strip()
+        if not ai_majority_q15:
+            agreement_lower = ai_agreement_label.lower()
+            human_vs_ai_lower = human_vs_ai.lower()
+            if "tie" in human_vs_ai_lower or "split consensus" in agreement_lower:
+                ai_majority_q15 = "Tie (no majority)"
 
         vote_counts_text = ""
         if majority_row is not None:
@@ -219,6 +224,8 @@ def _build_article_summary(
         if not vote_counts_text:
             vote_counts_counter = _derive_q15_vote_counter(ai_base_rows, q15_col)
             vote_counts_text = _format_vote_counter(vote_counts_counter)
+        if not ai_majority_q15 and vote_counts_text.lower().startswith("tie"):
+            ai_majority_q15 = "Tie (no majority)"
 
         success_rate = None
         success_rate_raw = human_row.get(AI_SUCCESS_RATE_COLUMN)
