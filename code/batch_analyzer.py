@@ -95,7 +95,8 @@ class BatchAnalyzer:
         codebook_text = "\n\n".join([f"Section {p['page']}:\n{p['text']}" for p in codebook_pages])
 
         # 构建提示
-        prompt = self._build_prompt(codebook_text, article_text[:50000])
+        question_order = self.config.generate_question_order()
+        prompt = self._build_prompt(codebook_text, article_text[:50000], question_order)
 
         # 调用API
         analysis_text = None
@@ -258,8 +259,8 @@ class BatchAnalyzer:
 
         raise ValueError(f"Unsupported processing stage: {stage}")
 
-    def _build_prompt(self, codebook_text: str, article_text: str) -> str:
-        """构建分析提示"""
+    def _build_prompt(self, codebook_text: str, article_text: str, question_order: List[int]) -> str:
+        """构建分析提示（支持随机问题顺序）"""
         return f"""
 You are an expert public policy analyst reviewing sustainability research articles.
 
@@ -270,6 +271,8 @@ You are an expert public policy analyst reviewing sustainability research articl
 - For Yes/No questions, choose definitively based on evidence
 - For Yes-or-No or multiple choice problems, answer from the given options only (the options are in parentheses)
 - Format your entire response using the XML template below to ensure each answer stays inside its <Q#> tag. Do not include any text outside the template.
+- The question list below is shuffled each run (except Q15 appearing first). Match every answer to the correct <Q#> tag regardless of presentation order.
+- Evaluate each type independently; do not let question order influence your judgment.
 
 {self.config.STRUCTURED_RESPONSE_TEMPLATE}
 
@@ -279,7 +282,7 @@ You are an expert public policy analyst reviewing sustainability research articl
 **Article to Analyze:**
 {article_text}
 
-{self.config.FOURPT_QUESTIONS}
+{self.config.format_questions_prompt(question_order)}
         """.strip()
 
     def _build_raw_record(

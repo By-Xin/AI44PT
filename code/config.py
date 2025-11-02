@@ -2,7 +2,9 @@
 配置模块 - 4PT批量分析系统的完整配置
 """
 import os
+import random
 from pathlib import Path
+from typing import List
 from dotenv import load_dotenv
 
 # 加载环境变量
@@ -83,68 +85,43 @@ class Config:
         4: {"support": 26, "extent": 27, "likert": 28},
     }
 
-    # ==================== 4PT分析问题模板（28个问题）====================
-    FOURPT_QUESTIONS = """
-Please analyze this article using the 4PT framework by answering the following questions:
+    # ==================== 4PT问题字典（28个问题）====================
+    QUESTION_TEXTS = {
+        1: "Does the article fit in the universe of sustainability analyses we seek to assess? (Yes/No)",
+        2: "What problems or set of problems is the article trying to address?",
+        3: "Do the analysis, conclusions, and theories derived from, and directed to, understanding and/or managing a clearly specified 'on the ground' problem or class of problems? (Yes/No)",
+        4: "Provide arguments that support your response to Q3 (Does the article address a clearly specified on-ground problem?)",
+        5: "Provide some key text passages from the article that support your Q3 response",
+        6: "Are the analysis, conclusions, and theories generated to apply beyond understanding, and/or managing a clearly specified 'on the ground' problem or class of problems? (Yes/No)",
+        7: "Provide arguments that support your response to Q6 (Does the article generate analysis, conclusions, and theories to apply beyond understanding/managing a clearly specified on-ground problem?)",
+        8: "Provide some key text passages from the article that support your Q6 response",
+        9: "Do the analysis, conclusions, and theories treat individuals, organizations and states as largely self-interested, satisfaction driven entities that seek to maximize some kind of 'utility' outcome? (Yes/No)",
+        10: "Provide arguments that support your response to Q9 (Does the article treat entities as self-interested, utility-maximizing agents?)",
+        11: "Provide some key text passages from the article that support your Q9 response",
+        12: "Do the analysis incorporate theories and conclusions incorporate an assessment of individuals, organizations and/or states that extends beyond self-interested satisfaction seeking motivations? (Yes/No)",
+        13: "Provide arguments that support your response to Q12 (Does the article extend beyond self-interested satisfaction seeking motivations?)",
+        14: "Provide some key text passages from the article that support your Q12 response",
+        15: "Based on your analysis above, what is your final 4PT Type classification? (Type 1 / Type 2 / Type 3 / Type 4)",
+        16: "What is the difficulty level of this classification? (1 - Very Easy / 2 - Easy / 3 - Medium / 4 - Hard / 5 - Very Hard)",
+        17: "Based on your analysis, do you think this article should be classified as Type 1? (Yes/No) Why or why not. Provide your answer as \"Yes - ...\" or \"No - ...\" followed by a short justification.",
+        18: "To what extent does this article align with Type 1? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., \"0.82 - rationale\".",
+        19: "On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 1? Provide the number, the matching label, and a short justification.",
+        20: "Based on your analysis, do you think this article should be classified as Type 2? (Yes/No) Why or why not. Provide your answer as \"Yes - ...\" or \"No - ...\" followed by a short justification.",
+        21: "To what extent does this article align with Type 2? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., \"0.82 - rationale\".",
+        22: "On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 2? Provide the number, the matching label, and a short justification.",
+        23: "Based on your analysis, do you think this article should be classified as Type 3? (Yes/No) Why or why not. Provide your answer as \"Yes - ...\" or \"No - ...\" followed by a short justification.",
+        24: "To what extent does this article align with Type 3? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., \"0.82 - rationale\".",
+        25: "On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 3? Provide the number, the matching label, and a short justification.",
+        26: "Based on your analysis, do you think this article should be classified as Type 4? (Yes/No) Why or why not. Provide your answer as \"Yes - ...\" or \"No - ...\" followed by a short justification.",
+        27: "To what extent does this article align with Type 4? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., \"0.82 - rationale\".",
+        28: "On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 4? Provide the number, the matching label, and a short justification.",
+    }
 
-1. Does the article fit in the universe of sustainability analyses we seek to assess? (Yes/No)
-
-2. What problems or set of problems is the article trying to address?
-
-3. Do the analysis, conclusions, and theories derived from, and directed to, understanding and/or managing a clearly specified 'on the ground' problem or class of problems? (Yes/No)
-
-4. Provide arguments that support your response to Q3 (Does the article address a clearly specified on-ground problem?)
-
-5. Provide some key text passages from the article that support your Q3 response
-
-6. Are the analysis, conclusions, and theories generated to apply beyond understanding, and/or managing a clearly specified 'on the ground' problem or class of problems? (Yes/No)
-
-7. Provide arguments that support your response to Q6 (Does the article generate analysis, conclusions, and theories to apply beyond understanding/managing a clearly specified on-ground problem?)
-
-8. Provide some key text passages from the article that support your Q6 response
-
-9. Do the analysis, conclusions, and theories treat individuals, organizations and states as largely self-interested, satisfaction driven entities that seek to maximize some kind of 'utility' outcome? (Yes/No)
-
-10. Provide arguments that support your response to Q9 (Does the article treat entities as self-interested, utility-maximizing agents?)
-
-11. Provide some key text passages from the article that support your Q9 response
-
-12. Do the analysis incorporate theories and conclusions incorporate an assessment of individuals, organizations and/or states that extends beyond self-interested satisfaction seeking motivations? (Yes/No)
-
-13. Provide arguments that support your response to Q12 (Does the article extend beyond self-interested satisfaction seeking motivations?)
-
-14. Provide some key text passages from the article that support your Q12 response
-
-15. Based on your analysis above, what is your final 4PT Type classification? (Type 1 / Type 2 / Type 3 / Type 4)
-
-16. What is the difficulty level of this classification? (1 - Very Easy / 2 - Easy / 3 - Medium / 4 - Hard / 5 - Very Hard)
-
-17. Based on your analysis, do you think this article should be classified as Type 1? (Yes/No) Why or why not. Provide your answer as "Yes - ..." or "No - ..." followed by a short justification.
-
-18. To what extent does this article align with Type 1? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., "0.82 - rationale".
-
-19. On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 1? Provide the number, the matching label, and a short justification.
-
-20. Based on your analysis, do you think this article should be classified as Type 2? (Yes/No) Why or why not. Provide your answer as "Yes - ..." or "No - ..." followed by a short justification.
-
-21. To what extent does this article align with Type 2? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., "0.82 - rationale".
-
-22. On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 2? Provide the number, the matching label, and a short justification.
-
-23. Based on your analysis, do you think this article should be classified as Type 3? (Yes/No) Why or why not. Provide your answer as "Yes - ..." or "No - ..." followed by a short justification.
-
-24. To what extent does this article align with Type 3? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., "0.82 - rationale".
-
-25. On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 3? Provide the number, the matching label, and a short justification.
-
-26. Based on your analysis, do you think this article should be classified as Type 4? (Yes/No) Why or why not. Provide your answer as "Yes - ..." or "No - ..." followed by a short justification.
-
-27. To what extent does this article align with Type 4? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., "0.82 - rationale".
-
-28. On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 4? Provide the number, the matching label, and a short justification.
-
-Please answer each question clearly and provide specific evidence or reasoning when requested.
-"""
+    # 需要保持相邻的问题组
+    SUPPORT_QUESTION_GROUPS = [
+        [3, 4, 5],
+        [6, 7, 8],
+    ]
 
     # 结构化响应模板
     STRUCTURED_RESPONSE_TEMPLATE = """
@@ -209,6 +186,52 @@ Please answer each question clearly and provide specific evidence or reasoning w
         reasoning = cls.get_reasoning_effort()
         verbosity = cls.get_text_verbosity()
         return f"{cls.CLS_MODEL}-temp{cls.TEMPERATURE}-reasoning_{reasoning}-verbosity_{verbosity}"
+
+    @classmethod
+    def generate_question_order(cls) -> List[int]:
+        """生成随机问题顺序，保证Q15置顶且依赖题目紧邻"""
+        first_question = 15
+
+        used_numbers = {first_question}
+        units = []
+
+        for group in cls.SUPPORT_QUESTION_GROUPS:
+            units.append(list(group))
+            used_numbers.update(group)
+
+        for q_num in sorted(cls.QUESTION_TEXTS.keys()):
+            if q_num in used_numbers:
+                continue
+            units.append([q_num])
+
+        random.shuffle(units)
+
+        ordered_questions: List[int] = [first_question]
+        for unit in units:
+            if first_question in unit:
+                continue
+            ordered_questions.extend(unit)
+
+        return ordered_questions
+
+    @classmethod
+    def format_questions_prompt(cls, question_order: List[int]) -> str:
+        """根据指定顺序构建问题提示文本"""
+        header_lines = [
+            "Please analyze this article using the 4PT framework by answering the questions below.",
+            "Questions are listed in a randomized order (except Q15 first). Treat each independently despite ordering.",
+        ]
+
+        question_lines = [
+            f"Q{q_num}. {cls.QUESTION_TEXTS[q_num]}"
+            for q_num in question_order
+        ]
+
+        footer_lines = [
+            "Answer each question clearly and provide specific evidence or reasoning when requested."
+        ]
+
+        return "\n\n".join(header_lines + question_lines + footer_lines)
 
     @classmethod
     def setup_directories(cls):
