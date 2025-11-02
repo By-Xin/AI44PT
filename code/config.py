@@ -19,7 +19,7 @@ class Config:
     CODEBOOK_MD = PROJECT_ROOT / "data" / "processed" / "TheCodingTask.md"
 
     # Excel和PDF路径配置
-    EXCEL_PATH = PROJECT_ROOT / "data" / "processed" / "JRGsamples" / "JRG article sublist.xlsx"
+    EXCEL_PATH = PROJECT_ROOT / "data" / "processed" / "JRGsamples" / "JRG40.xlsx"
     PDF_FOLDER = PROJECT_ROOT / "data" / "processed" / "JRGsamples"
 
     # 输出配置
@@ -32,8 +32,8 @@ class Config:
     TEMPERATURE = 0.1  # 0.0为完全确定性，0.1为轻微随机性
 
     # OpenAI API高级参数（适用于支持的模型）
-    DEFAULT_REASONING_EFFORT = "high"  # "low", "medium", "high"
-    DEFAULT_TEXT_VERBOSITY = "medium"  # "low", "medium", "high"
+    DEFAULT_REASONING_EFFORT = "medium"  # "low", "medium", "high"
+    DEFAULT_TEXT_VERBOSITY = "low"  # "low", "medium", "high"
 
     # ==================== 批处理参数 ====================
     DEBUG_MODE = False  # 设为True将限制处理数量并降低模型开销
