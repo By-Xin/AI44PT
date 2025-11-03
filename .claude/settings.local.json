@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/Users/xinby/Desktop/4pt/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
