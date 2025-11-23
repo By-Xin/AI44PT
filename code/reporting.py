@@ -240,7 +240,7 @@ def _build_article_summary(
         if success_rate is None and total_ai_runs:
             success_rate = round(success_count / total_ai_runs, 3)
 
-        extent_avgs, likert_avgs = _collect_type_metrics(ai_base_rows, question_map)
+        extent_avgs, confidence_avgs = _collect_type_metrics(ai_base_rows, question_map)
 
         status = _determine_article_status(
             human_vs_ai,
@@ -273,12 +273,9 @@ def _build_article_summary(
         }
 
         for type_id in type_ids:
-            extent_col_name = f"Type {type_id} extent avg"
-            likert_col_name = f"Type {type_id} likert avg"
-            extent_value = extent_avgs.get(type_id)
-            likert_value = likert_avgs.get(type_id)
-            summary_row[extent_col_name] = round(extent_value, 3) if extent_value is not None else None
-            summary_row[likert_col_name] = round(likert_value, 3) if likert_value is not None else None
+            confidence_col_name = f"Type {type_id} confidence avg"
+            confidence_value = confidence_avgs.get(type_id)
+            summary_row[confidence_col_name] = round(confidence_value, 3) if confidence_value is not None else None
 
         summary_rows.append(summary_row)
 
@@ -309,9 +306,7 @@ def _build_article_summary(
         "Majority Vote Available",
     ]
     for type_id in type_ids:
-        desired_order.append(f"Type {type_id} extent avg")
-    for type_id in type_ids:
-        desired_order.append(f"Type {type_id} likert avg")
+        desired_order.append(f"Type {type_id} confidence avg")
     existing_columns = [col for col in desired_order if col in summary_df.columns]
     remaining_columns = [col for col in summary_df.columns if col not in existing_columns]
     summary_df = summary_df[existing_columns + remaining_columns]
@@ -1047,31 +1042,21 @@ def _collect_type_metrics(
         return {}, {}
 
     extent_avgs: Dict[int, float] = {}
-    likert_avgs: Dict[int, float] = {}
+    confidence_avgs: Dict[int, float] = {}
 
     for type_id, question_refs in Config.TYPE_QUESTION_GROUPS.items():
-        extent_col = question_map.get(question_refs["extent"])
-        likert_col = question_map.get(question_refs["likert"])
+        confidence_col = question_map.get(question_refs["confidence"])
 
-        if extent_col and extent_col in success_rows.columns:
-            extent_values = []
-            for value in success_rows[extent_col]:
-                parsed = ResponseParser.extract_extent_value(value)
+        if confidence_col and confidence_col in success_rows.columns:
+            confidence_values = []
+            for value in success_rows[confidence_col]:
+                parsed = ResponseParser.extract_confidence_value(value)
                 if parsed is not None:
-                    extent_values.append(parsed)
-            if extent_values:
-                extent_avgs[type_id] = sum(extent_values) / len(extent_values)
+                    confidence_values.append(parsed)
+            if confidence_values:
+                confidence_avgs[type_id] = sum(confidence_values) / len(confidence_values)
 
-        if likert_col and likert_col in success_rows.columns:
-            likert_values = []
-            for value in success_rows[likert_col]:
-                parsed = ResponseParser.extract_likert_value(value)
-                if parsed is not None:
-                    likert_values.append(parsed)
-            if likert_values:
-                likert_avgs[type_id] = sum(likert_values) / len(likert_values)
-
-    return extent_avgs, likert_avgs
+    return extent_avgs, confidence_avgs
 
 
 def _determine_article_status(

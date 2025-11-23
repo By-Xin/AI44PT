@@ -101,15 +101,10 @@ class ResponseParser:
             if q_num in answers:
                 answers[q_num] = self._normalize_yes_no(answers[q_num])
 
-        # 标准化概率/范围问题 (0-1)
-        for q_num in self.config.TYPE_EXTENT_QUESTIONS:
+        # 标准化Confidence量表问题 (1-5)
+        for q_num in self.config.TYPE_CONFIDENCE_QUESTIONS:
             if q_num in answers:
-                answers[q_num] = self._normalize_extent(answers[q_num])
-
-        # 标准化Likert量表问题 (1-5)
-        for q_num in self.config.TYPE_LIKERT_QUESTIONS:
-            if q_num in answers:
-                answers[q_num] = self._normalize_likert(answers[q_num])
+                answers[q_num] = self._normalize_confidence(answers[q_num])
 
         # 标准化Type分类 (Q16)
         if self.config.Q_ID_CLASSIFICATION in answers:
@@ -129,24 +124,14 @@ class ResponseParser:
             return "No"
         return text
 
-    def _normalize_extent(self, text: str) -> str:
-        """标准化0-1范围的答案"""
-        match = re.match(r'\s*(0?\.\d+|1(?:\.0+)?)', text)
-        if match:
-            prob = float(match.group(1))
-            prob = min(max(prob, 0.0), 1.0)
-            remainder = text[match.end():].strip(" -:")
-            return f"{prob:.2f}" + (f" - {remainder}" if remainder else "")
-        return text
-
-    def _normalize_likert(self, text: str) -> str:
-        """标准化Likert量表答案 (1-5)"""
+    def _normalize_confidence(self, text: str) -> str:
+        """标准化Confidence量表答案 (1-5)"""
         match = re.match(r'\s*([1-5])', text)
         if match:
             rating = int(match.group(1))
             rating = min(max(rating, 1), 5)
             remainder = text[match.end():].strip(" -:;")
-            label = self.config.LIKERT_LABELS.get(rating, "")
+            label = self.config.CONFIDENCE_LABELS.get(rating, "")
 
             if remainder:
                 if label and label.lower() not in remainder.lower():
@@ -209,31 +194,9 @@ class ResponseParser:
         return text
 
     @staticmethod
-    def extract_extent_value(text: Optional[str]) -> Optional[float]:
+    def extract_confidence_value(text: Optional[str]) -> Optional[float]:
         """
-        从文本中提取0-1范围的数值
-
-        Args:
-            text: 包含数值的文本
-
-        Returns:
-            提取的浮点数值，如果无法提取则返回None
-        """
-        if text is None:
-            return None
-        match = re.match(r'\s*(0?\.\d+|1(?:\.0+)?)', str(text))
-        if not match:
-            return None
-        try:
-            value = float(match.group(1))
-            return min(max(value, 0.0), 1.0)
-        except ValueError:
-            return None
-
-    @staticmethod
-    def extract_likert_value(text: Optional[str]) -> Optional[float]:
-        """
-        从文本中提取Likert量表数值
+        从文本中提取Confidence量表数值
 
         Args:
             text: 包含数值的文本

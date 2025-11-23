@@ -47,12 +47,13 @@ class Config:
     # ==================== Majority Vote配置 ====================
     ENABLE_MAJORITY_VOTE = True
     # Q15 is new Uncertainty Check (Objective)
-    # Old Q15->Q16 (Classification) (Objective)
-    # Old Q16->Q17 (Confidence) (Objective)
-    # Old Q17->Q18 (Type 1 Support) (Objective)
-    OBJECTIVE_QUESTIONS = [1, 3, 6, 9, 12, 15, 16, 17, 18, 21, 24, 27]
-    SUBJECTIVE_QUESTIONS = [2, 4, 5, 7, 8, 10, 11, 13, 14, 19, 20, 22, 23, 25, 26, 28, 29]
-    TOTAL_QUESTIONS = 29
+    # Q16 is Classification (Objective)
+    # Q17 is Global Confidence (Objective)
+    # Q18, Q20, Q22, Q24 are Type Support (Objective - Yes/No)
+    # Q19, Q21, Q23, Q25 are Type Confidence (Objective - 1-5)
+    OBJECTIVE_QUESTIONS = [1, 3, 6, 9, 12, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+    SUBJECTIVE_QUESTIONS = [2, 4, 5, 7, 8, 10, 11, 13, 14]
+    TOTAL_QUESTIONS = 25
 
     # Key Question IDs
     Q_ID_UNCERTAINTY = 15
@@ -60,44 +61,39 @@ class Config:
     Q_ID_CONFIDENCE = 17
 
     # 问题类型分组
-    TYPE_CLASS_YN_QUESTIONS = [18, 21, 24, 27]
-    TYPE_EXTENT_QUESTIONS = [19, 22, 25, 28]
-    TYPE_LIKERT_QUESTIONS = [20, 23, 26, 29]
+    TYPE_CLASS_YN_QUESTIONS = [18, 20, 22, 24]
+    TYPE_CONFIDENCE_QUESTIONS = [19, 21, 23, 25]
 
-    # Likert量表标签
-    LIKERT_LABELS = {
-        1: "Strongly disagree",
-        2: "Somewhat disagree",
+    # Confidence量表标签
+    CONFIDENCE_LABELS = {
+        1: "Very Unconfident",
+        2: "Unconfident",
         3: "Neutral",
-        4: "Somewhat agree",
-        5: "Strongly agree",
+        4: "Confident",
+        5: "Very Confident",
     }
 
-    # 额外问题列映射（Q17-Q28 -> Q18-Q29）
+    # 额外问题列映射（Q18-Q25）
     ADDITIONAL_QUESTION_COLUMNS = {
         18: "Type 1 classification support (Yes/No) [Q18]",
-        19: "Type 1 classification extent (0-1) [Q19]",
-        20: "Type 1 classification Likert (1-5) [Q20]",
-        21: "Type 2 classification support (Yes/No) [Q21]",
-        22: "Type 2 classification extent (0-1) [Q22]",
-        23: "Type 2 classification Likert (1-5) [Q23]",
-        24: "Type 3 classification support (Yes/No) [Q24]",
-        25: "Type 3 classification extent (0-1) [Q25]",
-        26: "Type 3 classification Likert (1-5) [Q26]",
-        27: "Type 4 classification support (Yes/No) [Q27]",
-        28: "Type 4 classification extent (0-1) [Q28]",
-        29: "Type 4 classification Likert (1-5) [Q29]",
+        19: "Type 1 classification confidence (1-5) [Q19]",
+        20: "Type 2 classification support (Yes/No) [Q20]",
+        21: "Type 2 classification confidence (1-5) [Q21]",
+        22: "Type 3 classification support (Yes/No) [Q22]",
+        23: "Type 3 classification confidence (1-5) [Q23]",
+        24: "Type 4 classification support (Yes/No) [Q24]",
+        25: "Type 4 classification confidence (1-5) [Q25]",
     }
 
     # Type问题分组
     TYPE_QUESTION_GROUPS = {
-        1: {"support": 18, "extent": 19, "likert": 20},
-        2: {"support": 21, "extent": 22, "likert": 23},
-        3: {"support": 24, "extent": 25, "likert": 26},
-        4: {"support": 27, "extent": 28, "likert": 29},
+        1: {"support": 18, "confidence": 19},
+        2: {"support": 20, "confidence": 21},
+        3: {"support": 22, "confidence": 23},
+        4: {"support": 24, "confidence": 25},
     }
 
-    # ==================== 4PT问题字典（29个问题）====================
+    # ==================== 4PT问题字典（25个问题）====================
     QUESTION_TEXTS = {
         1: "Does the article fit in the universe of sustainability analyses we seek to assess? (Yes/No)",
         2: "Provide arguments that support your response to Q1 (Does the article fit in the universe of sustainability analyses we seek to assess?)",
@@ -117,17 +113,13 @@ class Config:
         16: "Based on your analysis above, what is your final 4PT Type classification? (Type 1 / Type 2 / Type 3 / Type 4 / Uncertain or Not Applicable)",
         17: "How confident are you in your Type classification from Q16? Respond with a confidence level from 1 (Very Unconfident) to 5 (Very Confident), followed by a brief rationale, e.g., \"4 - rationale\".",
         18: "Based on your analysis, do you think this article should be classified as Type 1? (Yes/No) Why or why not. Provide your answer as \"Yes - ...\" or \"No - ...\" followed by a short justification.",
-        19: "To what extent does this article align with Type 1? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., \"0.82 - rationale\".",
-        20: "On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 1? Provide the number, the matching label, and a short justification.",
-        21: "Based on your analysis, do you think this article should be classified as Type 2? (Yes/No) Why or why not. Provide your answer as \"Yes - ...\" or \"No - ...\" followed by a short justification.",
-        22: "To what extent does this article align with Type 2? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., \"0.82 - rationale\".",
-        23: "On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 2? Provide the number, the matching label, and a short justification.",
-        24: "Based on your analysis, do you think this article should be classified as Type 3? (Yes/No) Why or why not. Provide your answer as \"Yes - ...\" or \"No - ...\" followed by a short justification.",
-        25: "To what extent does this article align with Type 3? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., \"0.82 - rationale\".",
-        26: "On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 3? Provide the number, the matching label, and a short justification.",
-        27: "Based on your analysis, do you think this article should be classified as Type 4? (Yes/No) Why or why not. Provide your answer as \"Yes - ...\" or \"No - ...\" followed by a short justification.",
-        28: "To what extent does this article align with Type 4? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., \"0.82 - rationale\".",
-        29: "On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 4? Provide the number, the matching label, and a short justification.",
+        19: "How confident are you on stating this article should (or should not) be classified as Type 1? Respond with a confidence level from 1 (Very Unconfident) to 5 (Very Confident), followed by a brief rationale, e.g., \"4 - rationale\".",
+        20: "Based on your analysis, do you think this article should be classified as Type 2? (Yes/No) Why or why not. Provide your answer as \"Yes - ...\" or \"No - ...\" followed by a short justification.",
+        21: "How confident are you on stating this article should (or should not) be classified as Type 2? Respond with a confidence level from 1 (Very Unconfident) to 5 (Very Confident), followed by a brief rationale, e.g., \"4 - rationale\".",
+        22: "Based on your analysis, do you think this article should be classified as Type 3? (Yes/No) Why or why not. Provide your answer as \"Yes - ...\" or \"No - ...\" followed by a short justification.",
+        23: "How confident are you on stating this article should (or should not) be classified as Type 3? Respond with a confidence level from 1 (Very Unconfident) to 5 (Very Confident), followed by a brief rationale, e.g., \"4 - rationale\".",
+        24: "Based on your analysis, do you think this article should be classified as Type 4? (Yes/No) Why or why not. Provide your answer as \"Yes - ...\" or \"No - ...\" followed by a short justification.",
+        25: "How confident are you on stating this article should (or should not) be classified as Type 4? Respond with a confidence level from 1 (Very Unconfident) to 5 (Very Confident), followed by a brief rationale, e.g., \"4 - rationale\".",
     }
 
     # 需要保持相邻的问题组
@@ -169,10 +161,6 @@ class Config:
 <Q23>[Answer here]</Q23>
 <Q24>[Answer here]</Q24>
 <Q25>[Answer here]</Q25>
-<Q26>[Answer here]</Q26>
-<Q27>[Answer here]</Q27>
-<Q28>[Answer here]</Q28>
-<Q29>[Answer here]</Q29>
 </END_4PT_RESPONSE>
 """
 

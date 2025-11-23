@@ -153,6 +153,9 @@ class MajorityVoter:
             elif q_num == self.config.Q_ID_CONFIDENCE:
                 # 难度等级问题
                 normalized.append(self._normalize_difficulty_for_vote(answer))
+            elif q_num in self.config.TYPE_CONFIDENCE_QUESTIONS:
+                # Type Confidence问题
+                normalized.append(self._normalize_confidence_for_vote(answer))
             else:
                 normalized.append(answer)
 
@@ -215,6 +218,21 @@ class MajorityVoter:
 
         return answer
 
+    def _normalize_confidence_for_vote(self, answer: str) -> str:
+        """标准化Type Confidence用于投票"""
+        answer_lower = answer.lower()
+        # 使用配置中的标签
+        labels = self.config.CONFIDENCE_LABELS
+        
+        # 尝试提取数字
+        match = re.search(r'[1-5]', answer)
+        if match:
+            num = int(match.group())
+            label = labels.get(num, "")
+            return f"{num} - {label}" if label else str(num)
+            
+        return answer
+
     def _calculate_numeric_stats(
         self,
         successful_results: List[Dict]
@@ -230,24 +248,12 @@ class MajorityVoter:
         """
         numeric_stats = {}
 
-        # 计算类型强度（0-1范围）的平均值
-        for q_num in self.config.TYPE_EXTENT_QUESTIONS:
+        # 计算Confidence量表的平均值
+        for q_num in self.config.TYPE_CONFIDENCE_QUESTIONS:
             values = []
             for ai_answers in successful_results:
                 raw = ai_answers.get(q_num)
-                val = ResponseParser.extract_extent_value(raw)
-                if val is not None:
-                    values.append(val)
-            if values:
-                avg_val = sum(values) / len(values)
-                numeric_stats[q_num] = {"average": avg_val, "count": len(values)}
-
-        # 计算Likert量表的平均值
-        for q_num in self.config.TYPE_LIKERT_QUESTIONS:
-            values = []
-            for ai_answers in successful_results:
-                raw = ai_answers.get(q_num)
-                val = ResponseParser.extract_likert_value(raw)
+                val = ResponseParser.extract_confidence_value(raw)
                 if val is not None:
                     values.append(val)
             if values:
@@ -291,20 +297,16 @@ class ConsensusAnalyzer:
 
         for type_id, q_map in self.config.TYPE_QUESTION_GROUPS.items():
             support_col = column_mapping.get(q_map["support"])
-            extent_col = column_mapping.get(q_map["extent"])
-            likert_col = column_mapping.get(q_map["likert"])
+            confidence_col = column_mapping.get(q_map["confidence"])
 
             support_raw = row.get(support_col) if support_col else None
-            extent_raw = row.get(extent_col) if extent_col else None
-            likert_raw = row.get(likert_col) if likert_col else None
+            confidence_raw = row.get(confidence_col) if confidence_col else None
 
             # 处理缺失值
             if pd.isna(support_raw):
                 support_raw = None
-            if pd.isna(extent_raw):
-                extent_raw = None
-            if pd.isna(likert_raw):
-                likert_raw = None
+            if pd.isna(confidence_raw):
+                confidence_raw = None
 
             # 解析support
             support_flag = None
@@ -316,14 +318,12 @@ class ConsensusAnalyzer:
                     support_flag = False
 
             # 提取数值
-            extent_value = ResponseParser.extract_extent_value(extent_raw)
-            likert_value = ResponseParser.extract_likert_value(likert_raw)
+            confidence_value = ResponseParser.extract_confidence_value(confidence_raw)
 
             type_details.append({
                 "type": type_id,
                 "support": support_flag,
-                "extent": extent_value,
-                "likert": likert_value,
+                "confidence": confidence_value,
             })
 
         if not type_details:
@@ -332,8 +332,7 @@ class ConsensusAnalyzer:
         # 检查是否有任何信号
         has_signal = any(
             info["support"] is not None or
-            info["extent"] is not None or
-            info["likert"] is not None
+            info["confidence"] is not None
             for info in type_details
         )
         if not has_signal:
@@ -344,9 +343,8 @@ class ConsensusAnalyzer:
         best_types = []
         for info in type_details:
             support_score = 1 if info["support"] is True else (-1 if info["support"] is False else 0)
-            extent_score = info["extent"] if info["extent"] is not None else -1
-            likert_score = info["likert"] if info["likert"] is not None else -1
-            key = (support_score, extent_score, likert_score)
+            confidence_score = info["confidence"] if info["confidence"] is not None else -1
+            key = (support_score, confidence_score)
 
             if best_key is None or key > best_key:
                 best_key = key
@@ -354,9 +352,9 @@ class ConsensusAnalyzer:
             elif key == best_key:
                 best_types.append(info)
 
-        if not best_types or best_key == (-1, -1, -1):
+        if not best_types or best_key == (-1, -1):
             return "No clear consensus"
-        if best_key == (0, -1, -1):
+        if best_key == (0, -1):
             return "No clear consensus"
 
         # 格式化结果
@@ -376,10 +374,8 @@ class ConsensusAnalyzer:
         else:
             descriptors.append("Unknown")
 
-        if info["extent"] is not None:
-            descriptors.append(f"extent={info['extent']:.2f}")
-        if info["likert"] is not None:
-            descriptors.append(f"likert={info['likert']:.2f}")
+        if info["confidence"] is not None:
+            descriptors.append(f"confidence={info['confidence']:.2f}")
 
         detail = "; ".join(descriptors)
         return f"Type {info['type']} ({detail})"

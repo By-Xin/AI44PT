@@ -995,11 +995,9 @@ Examples of TRUE "On-the-Ground Problems": - **Specific environmental crises**: 
             if avg_val is None or count is None:
                 continue
 
-            if q_num in self.config.TYPE_EXTENT_QUESTIONS:
-                majority_row[column_mapping[q_num]] = f"{avg_val:.2f} (avg of {count} runs)"
-            elif q_num in self.config.TYPE_LIKERT_QUESTIONS:
+            if q_num in self.config.TYPE_CONFIDENCE_QUESTIONS:
                 rounded = int(round(avg_val))
-                label = self.config.LIKERT_LABELS.get(rounded, "")
+                label = self.config.CONFIDENCE_LABELS.get(rounded, "")
                 label_suffix = f" ~ {label}" if label else ""
                 majority_row[column_mapping[q_num]] = f"{avg_val:.2f}{label_suffix} (avg of {count} runs)"
 
@@ -1165,7 +1163,7 @@ Examples of TRUE "On-the-Ground Problems": - **Specific environmental crises**: 
         column_mapping: Dict[int, str]
     ) -> pd.DataFrame:
         """在派生列计算后填充人类与共识的比较结果"""
-        consensus_col = 'Type consensus (Q17-Q28 summary)'
+        consensus_col = 'Type consensus (Q18-Q25 summary)'
         if consensus_col not in df.columns:
             return df
 
@@ -1251,7 +1249,7 @@ Examples of TRUE "On-the-Ground Problems": - **Specific environmental crises**: 
         print("\n🌳 Calculating derived classifications...")
 
         decision_tree_col = 'Decision Tree 4PT'
-        type_consensus_col = 'Type consensus (Q17-Q28 summary)'
+        type_consensus_col = 'Type consensus (Q18-Q25 summary)'
 
         df[decision_tree_col] = df.apply(
             lambda row: DecisionTreeClassifier.calculate_4pt_type(row, column_mapping),
@@ -1280,7 +1278,7 @@ Examples of TRUE "On-the-Ground Problems": - **Specific environmental crises**: 
         # 调整列顺序
         base_cols = ['#', 'source', 'Analysis_Status']
         decision_tree_col = 'Decision Tree 4PT'
-        type_consensus_col = 'Type consensus (Q17-Q28 summary)'
+        type_consensus_col = 'Type consensus (Q18-Q25 summary)'
         extra_cols = [
             decision_tree_col,
             type_consensus_col,
