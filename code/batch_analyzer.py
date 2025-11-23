@@ -96,7 +96,10 @@ class BatchAnalyzer:
 
         # 构建提示
         question_order = self.config.generate_question_order()
-        prompt = self._build_prompt(codebook_text, article_text[:50000], question_order)
+        system_prompt, user_prompt = self._build_prompt(codebook_text, article_text[:50000], question_order)
+        
+        # For recording and single-input API
+        full_prompt_for_record = f"{system_prompt}\n\n{user_prompt}"
 
         # 调用API
         analysis_text = None
@@ -106,7 +109,7 @@ class BatchAnalyzer:
             # 尝试使用新API
             response = self.client.responses.create(
                 model=self.config.CLS_MODEL,
-                input=prompt,
+                input=full_prompt_for_record,
                 reasoning={"effort": self.config.get_reasoning_effort()},
                 text={"verbosity": self.config.get_text_verbosity()},
             )
@@ -117,7 +120,10 @@ class BatchAnalyzer:
             try:
                 response = self.client.chat.completions.create(
                     model=self.config.CLS_MODEL,
-                    messages=[{"role": "user", "content": prompt}],
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
                     max_tokens=30000,
                     temperature=self.config.TEMPERATURE
                 )
@@ -137,7 +143,7 @@ class BatchAnalyzer:
 
         # 保存原始响应
         record = self._save_raw_response(
-            article_meta, run_index, prompt, analysis_text,
+            article_meta, run_index, full_prompt_for_record, analysis_text,
             api_timestamp, status, error_message, error_type=error_type
         )
 
@@ -259,23 +265,11 @@ class BatchAnalyzer:
 
         raise ValueError(f"Unsupported processing stage: {stage}")
 
-    def _build_prompt(self, codebook_text: str, article_text: str, question_order: List[int]) -> str:
+    def _build_prompt(self, codebook_text: str, article_text: str, question_order: List[int]) -> Tuple[str, str]:
         """构建分析提示（支持随机问题顺序）"""
-        return f"""
-You are an expert public policy analyst reviewing sustainability research articles.
-
-**Instructions:**
-- Answer ALL questions only based on the provided Codebook and Article
-- Provide specific citations when requested
-- Keep justifications concise and evidence-based
-- For Yes/No questions, choose definitively based on evidence
-- For Yes-or-No or multiple choice problems, answer from the given options only (the options are in parentheses)
-- Format your entire response using the XML template below to ensure each answer stays inside its <Q#> tag. Do not include any text outside the template.
-- The question list below is shuffled each run (except Q15 appearing first). Match every answer to the correct <Q#> tag regardless of presentation order.
-- Evaluate each type independently; do not let question order influence your judgment.
-
-{self.config.STRUCTURED_RESPONSE_TEMPLATE}
-
+        system_prompt = self.config.SYSTEM_PROMPT
+        
+        user_prompt = f"""
 **4PT Codebook:**
 {codebook_text}
 
@@ -284,6 +278,8 @@ You are an expert public policy analyst reviewing sustainability research articl
 
 {self.config.format_questions_prompt(question_order)}
         """.strip()
+        
+        return system_prompt, user_prompt
 
     def _build_raw_record(
         self,

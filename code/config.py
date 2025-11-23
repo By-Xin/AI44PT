@@ -162,6 +162,23 @@ class Config:
 </END_4PT_RESPONSE>
 """
 
+    # 系统提示词 (System Prompt)
+    SYSTEM_PROMPT = f"""
+You are an expert public policy analyst reviewing sustainability research articles.
+
+**Instructions:**
+- Answer ALL questions only based on the provided Codebook and Article
+- Provide specific citations when requested
+- Keep justifications concise and evidence-based
+- For Yes/No questions, choose definitively based on evidence
+- For Yes-or-No or multiple choice problems, answer from the given options only (the options are in parentheses)
+- Format your entire response using the XML template below to ensure each answer stays inside its <Q#> tag. Do not include any text outside the template.
+- The question list below is shuffled each run (except Q15 appearing first). Match every answer to the correct <Q#> tag regardless of presentation order.
+- Evaluate each type independently; do not let question order influence your judgment.
+
+{STRUCTURED_RESPONSE_TEMPLATE}
+""".strip()
+
     # ==================== 类方法 ====================
 
     @classmethod
