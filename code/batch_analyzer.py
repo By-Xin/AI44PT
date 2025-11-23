@@ -71,7 +71,9 @@ class BatchAnalyzer:
     def analyze_single_article(
         self,
         article_pages: List[Dict],
-        codebook_pages: List[Dict],
+        coding_task_pages: List[Dict],
+        executive_summary_pages: List[Dict],
+        main_body_pages: List[Dict],
         article_meta: Dict,
         run_index: int
     ) -> Tuple[Optional[Dict], str]:
@@ -80,7 +82,9 @@ class BatchAnalyzer:
 
         Args:
             article_pages: 文章页面列表
-            codebook_pages: 编码手册页面列表
+            coding_task_pages: 编码任务说明页面列表
+            executive_summary_pages: 执行摘要页面列表
+            main_body_pages: 主体内容页面列表
             article_meta: 文章元数据
             run_index: 运行索引
 
@@ -92,11 +96,19 @@ class BatchAnalyzer:
 
         # 合并页面内容
         article_text = "\n\n".join([f"Page {p['page']}:\n{p['text']}" for p in article_pages])
-        codebook_text = "\n\n".join([f"Section {p['page']}:\n{p['text']}" for p in codebook_pages])
+        coding_task_text = "\n\n".join([f"Section {p['page']}:\n{p['text']}" for p in coding_task_pages])
+        executive_summary_text = "\n\n".join([f"Section {p['page']}:\n{p['text']}" for p in executive_summary_pages])
+        main_body_text = "\n\n".join([f"Section {p['page']}:\n{p['text']}" for p in main_body_pages])
 
         # 构建提示
         question_order = self.config.generate_question_order()
-        system_prompt, user_prompt = self._build_prompt(codebook_text, article_text[:50000], question_order)
+        system_prompt, user_prompt = self._build_prompt(
+            coding_task_text, 
+            executive_summary_text, 
+            main_body_text, 
+            article_text[:50000], 
+            question_order
+        )
         
         # For recording and single-input API
         full_prompt_for_record = f"{system_prompt}\n\n{user_prompt}"
@@ -157,7 +169,9 @@ class BatchAnalyzer:
     def analyze_article_multiple_runs(
         self,
         article_pages: List[Dict],
-        codebook_pages: List[Dict],
+        coding_task_pages: List[Dict],
+        executive_summary_pages: List[Dict],
+        main_body_pages: List[Dict],
         article_meta: Dict,
         collect_records: bool = False
     ):
@@ -166,7 +180,9 @@ class BatchAnalyzer:
 
         Args:
             article_pages: 文章页面列表
-            codebook_pages: 编码手册页面列表
+            coding_task_pages: 编码任务说明页面列表
+            executive_summary_pages: 执行摘要页面列表
+            main_body_pages: 主体内容页面列表
             article_meta: 文章元数据
 
         Returns:
@@ -179,7 +195,7 @@ class BatchAnalyzer:
         if ai_runs <= 1:
             # 单次运行
             response, timestamp, record = self.analyze_single_article(
-                article_pages, codebook_pages, article_meta, run_index=1
+                article_pages, coding_task_pages, executive_summary_pages, main_body_pages, article_meta, run_index=1
             )
             if collect_records and record:
                 raw_records.append(record)
@@ -200,7 +216,7 @@ class BatchAnalyzer:
         for i in range(ai_runs):
             print(f"      Iteration {i+1}/{ai_runs}...")
             response, timestamp, record = self.analyze_single_article(
-                article_pages, codebook_pages, article_meta, run_index=i+1
+                article_pages, coding_task_pages, executive_summary_pages, main_body_pages, article_meta, run_index=i+1
             )
             if collect_records and record:
                 raw_records.append(record)
@@ -265,15 +281,41 @@ class BatchAnalyzer:
 
         raise ValueError(f"Unsupported processing stage: {stage}")
 
-    def _build_prompt(self, codebook_text: str, article_text: str, question_order: List[int]) -> Tuple[str, str]:
+    def _build_prompt(self, coding_task_text: str, executive_summary_text: str, main_body_text: str, article_text: str, question_order: List[int]) -> Tuple[str, str]:
         """构建分析提示（支持随机问题顺序）"""
         system_prompt = self.config.SYSTEM_PROMPT
         
         user_prompt = f"""
-**4PT Codebook:**
-{codebook_text}
+### Reference Materials
+You have access to the full theoretical texts below. You must read and internalize these definitions before answering the questions. Please pay attention to the four schools of thought as defined, which may help in distinguishing between types.
 
-**Article to Analyze:**
+***DOCUMENT 1: THE CODING TASK***
+{coding_task_text}
+***DOCUMENT 2: EXECUTIVE SUMMARY***
+{executive_summary_text}
+***DOCUMENT 3: MAIN BODY & FOUR SCHOOLS***
+{main_body_text}
+
+### CRITICAL REMINDERS
+Based on previous issues, please carefully adhere to the following instructions when generating your response. Yet please keep in mind that these are examples of common pitfalls, not an exhaustive list. Always refer back to the coding task definitions and for final judgment.
+
+**1. THE "ON-THE-GROUND PROBLEM"**
+**"On-the-ground problem" refers to substantive, empirically measurable specific policy problems that are: **Specific**: Points to particular events or phenomena, not abstract concepts, or **Teleological**: Analysis begins and ends with solving this specific problem, not validating a universal theory.
+Examples of TRUE "On-the-Ground Problems": - **Specific environmental crises**: Illegal logging in Amazon forests, overfishing of Atlantic cod, toxic chemical discharge in a specific river - **Measurable targets**: Global temperature rise limited to 1.5°C, reducing traffic accident deaths, preventing extinction of a specific species (e.g., spotted owl) - **Concrete access issues**: Access to K-12 education, clean water supply for urban populations
+ What "On-the-Ground Problem" does NOT mean:
+**✗ Abstract values/concepts:**- "Environmental conservation" - "Equity" - "Human rights" - "Social welfare maximization"- "Stakeholder consensus"- "Legitimacy" 
+**✗ Policy/governance mechanisms:**- Ecolabel compliance issues- Regulatory enforcement challenges- Top-down policy effectiveness- Information asymmetries - Certification processes- Institutional fragmentation
+
+**2. THE TYPE 4 "STRICTNESS" FALLACY**
+* **The Error:** AI often classifies articles as Type 4 just because they advocate for "strict rules" or "punishment."
+* **The Rule:** Strict enforcement of a market rule (e.g., timber legality) is often **Type 1** (Commons/Market rules) or **Type 3** (Rule of Law).
+* **True Type 4:** Type 4 is defined by **Lexical Priority**. It argues that a specific outcome (e.g., ecological integrity) is *incommensurable* and must be achieved *regardless* of economic utility or stakeholder consensus.
+
+**3. THE "UTILITY" KEYWORD TRAP**
+* **The Error:** Classifying as Type 2 just because the word "utility" or "efficiency" appears.
+* **The Rule:** Determine if the author *adopts* utility maximization as their goal (Type 1/2) or *critiques* it. Do not simply rely on keyword presence. Focus on the *role* of utility in their argument. For example, if they CRITIQUE utility maximization as insufficient, it may indicate Type 3 or 4.
+
+### Article to Analyze
 {article_text}
 
 {self.config.format_questions_prompt(question_order)}
@@ -433,8 +475,14 @@ class BatchAnalyzer:
         print(f"\n📝 Writing aggregated raw responses to JSON: {final_output_path}")
 
         # 预加载Codebook
-        cb_pages = self.document_reader.read_markdown(str(self.config.CODEBOOK_MD))
-        print(f"Codebook sections loaded: {len(cb_pages)}")
+        coding_task_pages = self.document_reader.read_markdown(str(self.config.CODINGTASK_MD))
+        executive_summary_pages = self.document_reader.read_markdown(str(self.config.EXECUTIVESUMMARY_MD))
+        main_body_pages = self.document_reader.read_markdown(str(self.config.MAINBODY_MD))
+        
+        print(f"Reference documents loaded:")
+        print(f"  - Coding Task: {len(coding_task_pages)} sections")
+        print(f"  - Executive Summary: {len(executive_summary_pages)} sections")
+        print(f"  - Main Body: {len(main_body_pages)} sections")
 
         generation_stats = defaultdict(int)
         ai_runs = self.config.get_ai_runs()
@@ -506,7 +554,12 @@ class BatchAnalyzer:
 
             for run_idx in range(ai_runs):
                 response, api_timestamp, record = self.analyze_single_article(
-                    article_pages, cb_pages, article_meta, run_index=run_idx + 1
+                    article_pages, 
+                    coding_task_pages, 
+                    executive_summary_pages, 
+                    main_body_pages, 
+                    article_meta, 
+                    run_index=run_idx + 1
                 )
                 if record:
                     aggregated_records.append(record)

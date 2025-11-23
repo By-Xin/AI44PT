@@ -97,7 +97,7 @@ def main():
         print("\n❌ Configuration validation failed!")
         print("Please check:")
         print("  - OPENAI_API_KEY is set in .env file")
-        print("  - Codebook file exists at:", config.CODEBOOK_MD)
+        print("  - Codebook file exists at:", config.CODINGTASK_MD)
         print("  - Excel file exists at:", config.EXCEL_PATH)
         return 1
 

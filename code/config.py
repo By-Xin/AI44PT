@@ -18,7 +18,9 @@ class Config:
     PROJECT_ROOT = Path(__file__).parent.parent
 
     # 核心文件路径
-    CODEBOOK_MD = PROJECT_ROOT / "data" / "processed" / "TheCodingTask.md"
+    CODINGTASK_MD = PROJECT_ROOT / "data" / "instructions" / "TheCodingTask.md"
+    EXECUTIVESUMMARY_MD = PROJECT_ROOT / "data" / "instructions" / "ExecutiveSummary.md"
+    MAINBODY_MD = PROJECT_ROOT / "data" / "instructions" / "MainBody.md"
 
     # Excel和PDF路径配置
     EXCEL_PATH = PROJECT_ROOT / "data" / "processed" / "JRGsamples" / "JRG40.xlsx"
@@ -102,8 +104,8 @@ class Config:
         12: "Do the analysis incorporate theories and conclusions incorporate an assessment of individuals, organizations and/or states that extends beyond self-interested satisfaction seeking motivations? (Yes/No)",
         13: "Provide arguments that support your response to Q12 (Does the article extend beyond self-interested satisfaction seeking motivations?)",
         14: "Provide some key text passages from the article that support your Q12 response",
-        15: "Based on your analysis above, what is your final 4PT Type classification? (Type 1 / Type 2 / Type 3 / Type 4)",
-        16: "What is the difficulty level of this classification? (1 - Very Easy / 2 - Easy / 3 - Medium / 4 - Hard / 5 - Very Hard)",
+        15: "Based on your analysis above, what is your final 4PT Type classification? (Type 1 / Type 2 / Type 3 / Type 4 / Uncertain or Not Applicable)",
+        16: "How confident are you in your Type classification from Q15? Respond with a confidence level from 1 (Very Unconfident) to 5 (Very Confident), followed by a brief rationale, e.g., \"4 - rationale\".",
         17: "Based on your analysis, do you think this article should be classified as Type 1? (Yes/No) Why or why not. Provide your answer as \"Yes - ...\" or \"No - ...\" followed by a short justification.",
         18: "To what extent does this article align with Type 1? Respond with a score between 0 and 1 (three decimal places) followed by a brief rationale, e.g., \"0.82 - rationale\".",
         19: "On a 1-5 Likert scale (1 = Strongly disagree, 2 = Somewhat disagree, 3 = Neutral, 4 = Somewhat agree, 5 = Strongly agree), how strongly do you agree that this article fits Type 1? Provide the number, the matching label, and a short justification.",
@@ -165,17 +167,21 @@ class Config:
 
     # 系统提示词 (System Prompt)
     SYSTEM_PROMPT = f"""
-You are an expert public policy analyst reviewing sustainability research articles.
+### Role
+You are an expert policy analyst and critical thinker specializing in the "Four Problem Types" (4PT) framework for sustainability governance. 
 
-**Instructions:**
-- Answer ALL questions only based on the provided Codebook and Article
-- Provide specific citations when requested
-- Keep justifications concise and evidence-based
-- For Yes/No questions, choose definitively based on evidence
-- For Yes-or-No or multiple choice problems, answer from the given options only (the options are in parentheses)
+### Task
+Your task is to first read and understand the provided Codebook that details the 4PT framework, and then apply this framework to analyze the provided academic articles to classify them into one of four distinct problem types (or "Uncertain") based on the questions below.
+
+### General Guidelines
+- Answer ALL questions based on the provided Codebook and Article. Do NOT use any outside knowledge.
+- You must remain objective, critical, and rigorous. Keep justifications concise and evidence-based.
+- Do not simply rely on keywords; you must analyze the logic of the argument.
+- Strictly adhere to the answer formats specified in each question: For Yes-or-No or multiple choice problems, answer from the given options only. Provide specific citations when requested.
 - Format your entire response using the XML template below to ensure each answer stays inside its <Q#> tag. Do not include any text outside the template.
-- Match every answer to the correct <Q#> tag regardless of presentation order.
-- Evaluate each type independently; do not let question order influence your judgment.
+- Evaluate each question independently; do not let question order influence your judgment. 
+- If uncertain about a question or you think the paragraph does not fit into the 4PT framework, answer "Uncertain" where applicable and provide a solid rationale. 
+- Do NOT guess answers; if the information is not present, state that clearly. Do not use any type as a default fallback. You must justify all classifications with evidence from the text.
 
 {STRUCTURED_RESPONSE_TEMPLATE}
 """.strip()
@@ -278,8 +284,16 @@ You are an expert public policy analyst reviewing sustainability research articl
             print("Please set it in .env file")
             return False
 
-        if not cls.CODEBOOK_MD.exists():
-            print(f"Error: Codebook not found at {cls.CODEBOOK_MD}")
+        if not cls.CODINGTASK_MD.exists():
+            print(f"Error: Coding Task not found at {cls.CODINGTASK_MD}")
+            return False
+
+        if not cls.EXECUTIVESUMMARY_MD.exists():
+            print(f"Error: Executive Summary not found at {cls.EXECUTIVESUMMARY_MD}")
+            return False
+
+        if not cls.MAINBODY_MD.exists():
+            print(f"Error: Main Body not found at {cls.MAINBODY_MD}")
             return False
 
         if not cls.EXCEL_PATH.exists():
@@ -299,7 +313,9 @@ You are an expert public policy analyst reviewing sustainability research articl
         print("CONFIGURATION")
         print("=" * 60)
         print(f"Project Root: {cls.PROJECT_ROOT}")
-        print(f"Codebook: {cls.CODEBOOK_MD}")
+        print(f"Coding Task: {cls.CODINGTASK_MD}")
+        print(f"Exec Summary: {cls.EXECUTIVESUMMARY_MD}")
+        print(f"Main Body: {cls.MAINBODY_MD}")
         print(f"Excel Path: {cls.EXCEL_PATH}")
         print(f"PDF Folder: {cls.PDF_FOLDER}")
         print(f"Results Dir: {cls.RESULTS_DIR}")
