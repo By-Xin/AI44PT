@@ -40,6 +40,7 @@ class Config:
     # ==================== 批处理参数 ====================
     DEBUG_MODE = False  # 设为True将限制处理数量并降低模型开销
     DEFAULT_AI_RUNS = 3  # 每篇文章的独立AI运行次数
+    ENABLE_SHUFFLE = False  # 是否启用问题随机排序
 
     # ==================== Majority Vote配置 ====================
     ENABLE_MAJORITY_VOTE = True
@@ -88,7 +89,7 @@ class Config:
     # ==================== 4PT问题字典（28个问题）====================
     QUESTION_TEXTS = {
         1: "Does the article fit in the universe of sustainability analyses we seek to assess? (Yes/No)",
-        2: "What problems or set of problems is the article trying to address?",
+        2: "Provide arguments that support your response to Q1 (Does the article fit in the universe of sustainability analyses we seek to assess?)",
         3: "Do the analysis, conclusions, and theories derived from, and directed to, understanding and/or managing a clearly specified 'on the ground' problem or class of problems? (Yes/No)",
         4: "Provide arguments that support your response to Q3 (Does the article address a clearly specified on-ground problem?)",
         5: "Provide some key text passages from the article that support your Q3 response",
@@ -173,7 +174,7 @@ You are an expert public policy analyst reviewing sustainability research articl
 - For Yes/No questions, choose definitively based on evidence
 - For Yes-or-No or multiple choice problems, answer from the given options only (the options are in parentheses)
 - Format your entire response using the XML template below to ensure each answer stays inside its <Q#> tag. Do not include any text outside the template.
-- The question list below is shuffled each run (except Q15 appearing first). Match every answer to the correct <Q#> tag regardless of presentation order.
+- Match every answer to the correct <Q#> tag regardless of presentation order.
 - Evaluate each type independently; do not let question order influence your judgment.
 
 {STRUCTURED_RESPONSE_TEMPLATE}
@@ -206,27 +207,31 @@ You are an expert public policy analyst reviewing sustainability research articl
 
     @classmethod
     def generate_question_order(cls) -> List[int]:
-        """生成随机问题顺序，保证Q15置顶且依赖题目紧邻"""
-        first_question = 15
-
-        used_numbers = {first_question}
+        """生成问题顺序（支持随机或顺序，依赖题目紧邻）"""
         units = []
+        used_numbers = set()
 
+        # 1. 处理必须相邻的问题组
         for group in cls.SUPPORT_QUESTION_GROUPS:
             units.append(list(group))
             used_numbers.update(group)
 
+        # 2. 处理剩余的独立问题
         for q_num in sorted(cls.QUESTION_TEXTS.keys()):
             if q_num in used_numbers:
                 continue
             units.append([q_num])
 
-        random.shuffle(units)
+        # 3. 根据配置决定顺序
+        if cls.ENABLE_SHUFFLE:
+            random.shuffle(units)
+        else:
+            # 如果不随机，按题号排序（确保问题组按首题号排序）
+            units.sort(key=lambda x: x[0])
 
-        ordered_questions: List[int] = [first_question]
+        # 4. 展平列表
+        ordered_questions: List[int] = []
         for unit in units:
-            if first_question in unit:
-                continue
             ordered_questions.extend(unit)
 
         return ordered_questions
@@ -236,8 +241,12 @@ You are an expert public policy analyst reviewing sustainability research articl
         """根据指定顺序构建问题提示文本"""
         header_lines = [
             "Please analyze this article using the 4PT framework by answering the questions below.",
-            "Questions are listed in a randomized order (except Q15 first). Treat each independently despite ordering.",
         ]
+        
+        if cls.ENABLE_SHUFFLE:
+            header_lines.append("Questions are listed in a randomized order. Treat each independently despite ordering.")
+        else:
+            header_lines.append("Questions are listed below. Treat each independently.")
 
         question_lines = [
             f"Q{q_num}. {cls.QUESTION_TEXTS[q_num]}"
@@ -300,6 +309,7 @@ You are an expert public policy analyst reviewing sustainability research articl
         print(f"Reasoning Effort: {cls.get_reasoning_effort()}")
         print(f"Text Verbosity: {cls.get_text_verbosity()}")
         print(f"Majority Vote: {cls.ENABLE_MAJORITY_VOTE}")
+        print(f"Shuffle Questions: {cls.ENABLE_SHUFFLE}")
         print(f"Debug Mode: {cls.DEBUG_MODE}")
         print(f"API Key: {'✓ Set' if cls.OPENAI_API_KEY else '✗ Missing'}")
         print("=" * 60)
