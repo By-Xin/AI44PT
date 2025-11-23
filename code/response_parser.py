@@ -96,7 +96,7 @@ class ResponseParser:
             标准化后的答案字典
         """
         # 标准化Yes/No问题
-        yes_no_questions = [1, 3, 6, 9, 12] + self.config.TYPE_CLASS_YN_QUESTIONS
+        yes_no_questions = [1, 3, 6, 9, 12, 15] + self.config.TYPE_CLASS_YN_QUESTIONS
         for q_num in yes_no_questions:
             if q_num in answers:
                 answers[q_num] = self._normalize_yes_no(answers[q_num])
@@ -111,13 +111,13 @@ class ResponseParser:
             if q_num in answers:
                 answers[q_num] = self._normalize_likert(answers[q_num])
 
-        # 标准化Type分类 (Q15)
-        if 15 in answers:
-            answers[15] = self._normalize_type_classification(answers[15])
+        # 标准化Type分类 (Q16)
+        if self.config.Q_ID_CLASSIFICATION in answers:
+            answers[self.config.Q_ID_CLASSIFICATION] = self._normalize_type_classification(answers[self.config.Q_ID_CLASSIFICATION])
 
-        # 标准化难度等级 (Q16)
-        if 16 in answers:
-            answers[16] = self._normalize_difficulty(answers[16])
+        # 标准化难度等级 (Q17)
+        if self.config.Q_ID_CONFIDENCE in answers:
+            answers[self.config.Q_ID_CONFIDENCE] = self._normalize_difficulty(answers[self.config.Q_ID_CONFIDENCE])
 
         return answers
 

@@ -144,13 +144,13 @@ class MajorityVoter:
         normalized = []
 
         for answer in answers:
-            if q_num in [1, 3, 6, 9, 12] or q_num in self.config.TYPE_CLASS_YN_QUESTIONS:
+            if q_num in [1, 3, 6, 9, 12, 15] or q_num in self.config.TYPE_CLASS_YN_QUESTIONS:
                 # Yes/No问题
                 normalized.append(self._normalize_yes_no_for_vote(answer))
-            elif q_num == 15:
+            elif q_num == self.config.Q_ID_CLASSIFICATION:
                 # Type分类问题
                 normalized.append(self._normalize_type_for_vote(answer))
-            elif q_num == 16:
+            elif q_num == self.config.Q_ID_CONFIDENCE:
                 # 难度等级问题
                 normalized.append(self._normalize_difficulty_for_vote(answer))
             else:

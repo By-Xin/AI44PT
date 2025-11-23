@@ -17,9 +17,9 @@ from response_parser import ResponseParser
 AI_SUCCESS_COUNT_COLUMN = "AI Successful Runs"
 AI_TOTAL_COUNT_COLUMN = "AI Total Runs"
 AI_SUCCESS_RATE_COLUMN = "AI Success Rate"
-Q15_VOTE_COUNTS_COLUMN = "Q15 Vote Counts"
-HUMAN_Q15_TYPE_COLUMN = "Human Type (Q15)"
-AI_Q15_TYPE_COLUMN = "AI Majority (Q15)"
+Q15_VOTE_COUNTS_COLUMN = "Vote Counts"
+HUMAN_Q15_TYPE_COLUMN = "Human Type"
+AI_Q15_TYPE_COLUMN = "AI Majority Type"
 MISMATCH_PAIR_COLUMN = "Mismatch Pair (Human→AI)"
 DETAIL_NOTE_COLUMN = "Detail Note"
 
@@ -207,11 +207,14 @@ def _build_article_summary(
         human_vs_consensus = str(human_row.get(human_vs_consensus_column, "") or "")
         ai_agreement_label = str(human_row.get(ai_agreement_column, "") or "")
 
-        q15_col = question_map.get(15)
-        human_q15 = str(human_row.get(q15_col, "") or "").strip() if q15_col else ""
+        # Determine columns for Human (Q15) and AI (Q16) classification
+        q_human_col = question_map.get(15)
+        q_ai_col = question_map.get(Config.Q_ID_CLASSIFICATION)
+
+        human_q15 = str(human_row.get(q_human_col, "") or "").strip() if q_human_col else ""
         ai_majority_q15 = ""
-        if majority_row is not None and q15_col:
-            ai_majority_q15 = str(majority_row.get(q15_col, "") or "").strip()
+        if majority_row is not None and q_ai_col:
+            ai_majority_q15 = str(majority_row.get(q_ai_col, "") or "").strip()
         if not ai_majority_q15:
             agreement_lower = ai_agreement_label.lower()
             human_vs_ai_lower = human_vs_ai.lower()
@@ -222,7 +225,7 @@ def _build_article_summary(
         if majority_row is not None:
             vote_counts_text = str(majority_row.get(Q15_VOTE_COUNTS_COLUMN, "") or "")
         if not vote_counts_text:
-            vote_counts_counter = _derive_q15_vote_counter(ai_base_rows, q15_col)
+            vote_counts_counter = _derive_q15_vote_counter(ai_base_rows, q_ai_col)
             vote_counts_text = _format_vote_counter(vote_counts_counter)
         if not ai_majority_q15 and vote_counts_text.lower().startswith("tie"):
             ai_majority_q15 = "Tie (no majority)"

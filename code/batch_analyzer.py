@@ -32,10 +32,10 @@ from reporting import (
 class BatchAnalyzer:
     """批量分析协调器"""
 
-    AI_AGREEMENT_COL = 'AI run agreement (Q15)'
-    HUMAN_VS_AI_COL = 'Human vs AI (Q15)'
-    TYPE_SUMMARY_COL = 'Type summary (Q15, Decision Tree, Consensus)'
-    HUMAN_VS_CONSENSUS_COL = 'Human vs AI (consensus)'
+    AI_AGREEMENT_COL = 'AI run agreement'
+    HUMAN_VS_AI_COL = 'Human vs AI Match'
+    TYPE_SUMMARY_COL = 'Type summary'
+    HUMAN_VS_CONSENSUS_COL = 'Human vs Consensus'
     AI_SUCCESS_COUNT_COL = AI_SUCCESS_COUNT_COLUMN
     AI_TOTAL_COUNT_COL = AI_TOTAL_COUNT_COLUMN
     AI_SUCCESS_RATE_COL = AI_SUCCESS_RATE_COLUMN
@@ -660,7 +660,8 @@ Examples of TRUE "On-the-Ground Problems": - **Specific environmental crises**: 
             title = row.get('Title of the Paper', 'Unknown')
 
             print(f"\n[{seq_idx}/{total_articles}] Parsing article #{article_id}: {title[:50]}...")
-            q15_col = column_mapping.get(15)
+            q_human_col = column_mapping.get(15)
+            q_ai_col = column_mapping.get(self.config.Q_ID_CLASSIFICATION)
 
             # 添加human结果行
             human_row = row.to_dict()
@@ -808,8 +809,8 @@ Examples of TRUE "On-the-Ground Problems": - **Specific environmental crises**: 
                     majority_row[self.Q15_VOTE_COUNTS_COL] = vote_counts_text
                     results.append(majority_row)
 
-                    human_value = human_row.get(q15_col, '') if q15_col else ''
-                    ai_value = majority_row.get(q15_col, '') if q15_col else ''
+                    human_value = human_row.get(q_human_col, '') if q_human_col else ''
+                    ai_value = majority_row.get(q_ai_col, '') if q_ai_col else ''
                     human_vs_ai = self._compare_human_vs_ai_q15(human_value, ai_value)
                     human_row[self.HUMAN_VS_AI_COL] = human_vs_ai
                     majority_row[self.HUMAN_VS_AI_COL] = human_vs_ai
@@ -1028,7 +1029,7 @@ Examples of TRUE "On-the-Ground Problems": - **Specific environmental crises**: 
         total_runs: int
     ) -> str:
         """汇总Q15的AI一致性情况"""
-        detail = vote_details.get(15)
+        detail = vote_details.get(self.config.Q_ID_CLASSIFICATION)
         if detail is None or not detail.get('vote_counts'):
             if total_runs <= 1:
                 return 'Insufficient data'
@@ -1066,7 +1067,7 @@ Examples of TRUE "On-the-Ground Problems": - **Specific environmental crises**: 
         is_tie: bool = False
     ) -> str:
         """格式化Q15投票计数字符串"""
-        detail = vote_details.get(15) if vote_details else None
+        detail = vote_details.get(self.config.Q_ID_CLASSIFICATION) if vote_details else None
         if not detail:
             return ''
         vote_counts = detail.get('vote_counts') or {}
@@ -1107,7 +1108,7 @@ Examples of TRUE "On-the-Ground Problems": - **Specific environmental crises**: 
         """判断Q15是否出现平票"""
         if not vote_details:
             return False
-        detail = vote_details.get(15)
+        detail = vote_details.get(self.config.Q_ID_CLASSIFICATION)
         if not detail:
             return False
         counts = detail.get('vote_counts')
@@ -1207,13 +1208,22 @@ Examples of TRUE "On-the-Ground Problems": - **Specific environmental crises**: 
         decision_tree_col: str,
         consensus_col: str
     ) -> str:
-        """整合Q15、决策树和共识结果"""
+        """整合Q15/Q16、决策树和共识结果"""
         parts = []
-        q15_col = column_mapping.get(15)
-        if q15_col:
-            q15_val = str(row.get(q15_col, '') or '').strip()
-            if q15_val:
-                parts.append(f"Q15={q15_val}")
+        
+        # Determine classification column based on source
+        source = str(row.get('source', '')).lower()
+        if source == 'human':
+            q_col = column_mapping.get(15)
+            label = "Q15"
+        else:
+            q_col = column_mapping.get(self.config.Q_ID_CLASSIFICATION)
+            label = f"Q{self.config.Q_ID_CLASSIFICATION}"
+
+        if q_col:
+            val = str(row.get(q_col, '') or '').strip()
+            if val:
+                parts.append(f"{label}={val}")
 
         decision_val = str(row.get(decision_tree_col, '') or '').strip()
         if decision_val:
