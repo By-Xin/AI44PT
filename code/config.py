@@ -128,63 +128,6 @@ class Config:
         [6, 7, 8],
     ]
 
-    # 结构化响应模板
-    STRUCTURED_RESPONSE_TEMPLATE = """
-- Produce your answers using the exact XML-style template below.
-- Do not add any commentary or text outside the template.
-- Keep all citations, bullet lists, and supporting evidence inside the corresponding <Q#> tags.
-- Preserve multi-line structure within a tag when presenting multiple bullet points or citations.
-
-<BEGIN_4PT_RESPONSE>
-<Q1>[Answer here]</Q1>
-<Q2>[Answer here]</Q2>
-<Q3>[Answer here]</Q3>
-<Q4>[Answer here]</Q4>
-<Q5>[Answer here]</Q5>
-<Q6>[Answer here]</Q6>
-<Q7>[Answer here]</Q7>
-<Q8>[Answer here]</Q8>
-<Q9>[Answer here]</Q9>
-<Q10>[Answer here]</Q10>
-<Q11>[Answer here]</Q11>
-<Q12>[Answer here]</Q12>
-<Q13>[Answer here]</Q13>
-<Q14>[Answer here]</Q14>
-<Q15>[Answer here]</Q15>
-<Q16>[Answer here]</Q16>
-<Q17>[Answer here]</Q17>
-<Q18>[Answer here]</Q18>
-<Q19>[Answer here]</Q19>
-<Q20>[Answer here]</Q20>
-<Q21>[Answer here]</Q21>
-<Q22>[Answer here]</Q22>
-<Q23>[Answer here]</Q23>
-<Q24>[Answer here]</Q24>
-<Q25>[Answer here]</Q25>
-</END_4PT_RESPONSE>
-"""
-
-    # 系统提示词 (System Prompt)
-    SYSTEM_PROMPT = f"""
-### Role
-You are an expert policy analyst and critical thinker specializing in the "Four Problem Types" (4PT) framework for sustainability governance. 
-
-### Task
-Your task is to first read and understand the provided Codebook that details the 4PT framework, and then apply this framework to analyze the provided academic articles to classify them into one of four distinct problem types (or "Uncertain") based on the questions below.
-
-### General Guidelines
-- Answer ALL questions based on the provided Codebook and Article. Do NOT use any outside knowledge.
-- You must remain objective, critical, and rigorous. Keep justifications concise and evidence-based.
-- Do not simply rely on keywords; you must analyze the logic of the argument.
-- Strictly adhere to the answer formats specified in each question: For Yes-or-No or multiple choice problems, answer from the given options only. Provide specific citations when requested.
-- Format your entire response using the XML template below to ensure each answer stays inside its <Q#> tag. Do not include any text outside the template.
-- Evaluate each question independently; do not let question order influence your judgment. 
-- If uncertain about a question or you think the paragraph does not fit into the 4PT framework, answer "Uncertain" where applicable and provide a solid rationale. 
-- Do NOT guess answers; if the information is not present, state that clearly. Do not use any type as a default fallback. You must justify all classifications with evidence from the text.
-
-{STRUCTURED_RESPONSE_TEMPLATE}
-""".strip()
-
     # ==================== 类方法 ====================
 
     @classmethod
@@ -240,29 +183,6 @@ Your task is to first read and understand the provided Codebook that details the
             ordered_questions.extend(unit)
 
         return ordered_questions
-
-    @classmethod
-    def format_questions_prompt(cls, question_order: List[int]) -> str:
-        """根据指定顺序构建问题提示文本"""
-        header_lines = [
-            "Please analyze this article using the 4PT framework by answering the questions below.",
-        ]
-        
-        if cls.ENABLE_SHUFFLE:
-            header_lines.append("Questions are listed in a randomized order. Treat each independently despite ordering.")
-        else:
-            header_lines.append("Questions are listed below. Treat each independently.")
-
-        question_lines = [
-            f"Q{q_num}. {cls.QUESTION_TEXTS[q_num]}"
-            for q_num in question_order
-        ]
-
-        footer_lines = [
-            "Answer each question clearly and provide specific evidence or reasoning when requested."
-        ]
-
-        return "\n\n".join(header_lines + question_lines + footer_lines)
 
     @classmethod
     def setup_directories(cls):

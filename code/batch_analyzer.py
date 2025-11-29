@@ -17,6 +17,7 @@ except ImportError:
     tqdm = None
 
 from config import Config
+from prompts import SYSTEM_PROMPT, build_user_prompt, format_questions_prompt
 from document_reader import DocumentReader
 from response_parser import ResponseParser
 from voting import MajorityVoter, ConsensusAnalyzer, DecisionTreeClassifier
@@ -283,43 +284,12 @@ class BatchAnalyzer:
 
     def _build_prompt(self, coding_task_text: str, executive_summary_text: str, main_body_text: str, article_text: str, question_order: List[int]) -> Tuple[str, str]:
         """构建分析提示（支持随机问题顺序）"""
-        system_prompt = self.config.SYSTEM_PROMPT
+        system_prompt = SYSTEM_PROMPT
         
-        user_prompt = f"""
-### Reference Materials
-You have access to the full theoretical texts below. You must read and internalize these definitions before answering the questions. Please pay attention to the four schools of thought as defined, which may help in distinguishing between types.
-
-***DOCUMENT 1: THE CODING TASK***
-{coding_task_text}
-***DOCUMENT 2: EXECUTIVE SUMMARY***
-{executive_summary_text}
-***DOCUMENT 3: MAIN BODY & FOUR SCHOOLS***
-{main_body_text}
-
-### CRITICAL REMINDERS
-Based on previous issues, please carefully adhere to the following instructions when generating your response. Yet please keep in mind that these are examples of common pitfalls, not an exhaustive list. Always refer back to the coding task definitions and for final judgment.
-
-**1. THE "ON-THE-GROUND PROBLEM"**
-**"On-the-ground problem" refers to substantive, empirically measurable specific policy problems that are: **Specific**: Points to particular events or phenomena, not abstract concepts, or **Teleological**: Analysis begins and ends with solving this specific problem, not validating a universal theory.
-Examples of TRUE "On-the-Ground Problems": - **Specific environmental crises**: Illegal logging in Amazon forests, overfishing of Atlantic cod, toxic chemical discharge in a specific river - **Measurable targets**: Global temperature rise limited to 1.5°C, reducing traffic accident deaths, preventing extinction of a specific species (e.g., spotted owl) - **Concrete access issues**: Access to K-12 education, clean water supply for urban populations
- What "On-the-Ground Problem" does NOT mean:
-**✗ Abstract values/concepts:**- "Environmental conservation" - "Equity" - "Human rights" - "Social welfare maximization"- "Stakeholder consensus"- "Legitimacy" 
-**✗ Policy/governance mechanisms:**- Ecolabel compliance issues- Regulatory enforcement challenges- Top-down policy effectiveness- Information asymmetries - Certification processes- Institutional fragmentation
-
-**2. THE TYPE 4 "STRICTNESS" FALLACY**
-* **The Error:** AI often classifies articles as Type 4 just because they advocate for "strict rules" or "punishment."
-* **The Rule:** Strict enforcement of a market rule (e.g., timber legality) is often **Type 1** (Commons/Market rules) or **Type 3** (Rule of Law).
-* **True Type 4:** Type 4 is defined by **Lexical Priority**. It argues that a specific outcome (e.g., ecological integrity) is *incommensurable* and must be achieved *regardless* of economic utility or stakeholder consensus.
-
-**3. THE "UTILITY" KEYWORD TRAP**
-* **The Error:** Classifying as Type 2 just because the word "utility" or "efficiency" appears.
-* **The Rule:** Determine if the author *adopts* utility maximization as their goal (Type 1/2) or *critiques* it. Do not simply rely on keyword presence. Focus on the *role* of utility in their argument. For example, if they CRITIQUE utility maximization as insufficient, it may indicate Type 3 or 4.
-
-### Article to Analyze
-{article_text}
-
-{self.config.format_questions_prompt(question_order)}
-        """.strip()
+        user_prompt_base = build_user_prompt(coding_task_text, executive_summary_text, main_body_text, article_text)
+        questions_prompt = format_questions_prompt(question_order, self.config.QUESTION_TEXTS, self.config.ENABLE_SHUFFLE)
+        
+        user_prompt = f"{user_prompt_base}\n\n{questions_prompt}".strip()
         
         return system_prompt, user_prompt
 
