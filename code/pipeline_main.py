@@ -2,13 +2,13 @@
 批量分析流水线主程序 - 4PT框架批量文章分析
 """
 import argparse
-import builtins
 import logging
-import sys
 from datetime import datetime
 from pathlib import Path
+
 from config import Config
 from batch_analyzer import BatchAnalyzer
+from logging_utils import setup_logging, get_logger
 
 
 def parse_cli_args():
@@ -49,43 +49,10 @@ def parse_cli_args():
     return parser.parse_args()
 
 
-def _setup_logging():
-    """Configure root logger to emit clean CLI-friendly lines to stdout."""
-    logger = logging.getLogger()
-    if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)-7s | %(message)s"))
-        logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
-    return logging.getLogger(__name__)
-
-
-def _redirect_print_to_logger(logger: logging.Logger):
-    """Route built-in print through logging for consistent formatting."""
-    def _print(*args, sep=" ", end="\n", file=None, flush=False):
-        # Respect separator and end (except we rely on logger newline handling)
-        msg = sep.join(str(a) for a in args)
-        if end and end != "\n":
-            msg = f"{msg}{end}"
-        lvl = logging.INFO
-        if msg.lstrip().startswith(("⚠", "Warning", "warning")):
-            lvl = logging.WARNING
-        elif msg.lstrip().startswith(("❌", "Error", "error")):
-            lvl = logging.ERROR
-        logger.log(lvl, msg)
-        if flush:
-            for h in logging.getLogger().handlers:
-                try:
-                    h.flush()
-                except Exception:
-                    pass
-    builtins.print = _print
-
-
 def main():
     """批量分析主入口"""
-    logger = _setup_logging()
-    _redirect_print_to_logger(logger)
+    setup_logging(logging.INFO)
+    logger = get_logger(__name__)
 
     args = parse_cli_args()
     stage = args.stage
@@ -96,16 +63,16 @@ def main():
     skip_bad = bool(args.skip_bad)
     parse_all_runs = bool(args.parse_all_runs)
 
-    print("=" * 60)
-    print("4PT BATCH ANALYSIS PIPELINE")
-    print("=" * 60)
-    print(f"Selected stage: {stage.upper()}")
+    logger.info("=" * 60)
+    logger.info("4PT BATCH ANALYSIS PIPELINE")
+    logger.info("=" * 60)
+    logger.info("Selected stage: %s", stage.upper())
     if raw_path_input:
-        print(f"Raw path: {raw_path_input}")
+        logger.info("Raw path: %s", raw_path_input)
     if excel_override:
-        print(f"Excel override: {excel_override}")
-    print("=" * 60)
-    print(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        logger.info("Excel override: %s", excel_override)
+    logger.info("=" * 60)
+    logger.info("Start time: %s", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
     # 初始化配置
     config = Config()
@@ -117,30 +84,30 @@ def main():
         config.DEBUG_MODE = True
 
     # 显示配置信息
-    print("\n📋 Configuration:")
-    print(f"   Model: {config.CLS_MODEL}")
-    print(f"   Temperature: {config.TEMPERATURE}")
-    print(f"   AI Runs: {config.get_ai_runs()}")
-    print(f"   Reasoning Effort: {config.get_reasoning_effort()}")
-    print(f"   Text Verbosity: {config.get_text_verbosity()}")
-    print(f"   Majority Vote: {config.ENABLE_MAJORITY_VOTE}")
-    print(f"   Debug Mode: {config.DEBUG_MODE}")
-    print(f"   Excel Path: {config.EXCEL_PATH}")
-    print(f"   Output Directory: {config.RESULTS_DIR}")
+    logger.info("📋 Configuration:")
+    logger.info("   Model: %s", config.CLS_MODEL)
+    logger.info("   Temperature: %s", config.TEMPERATURE)
+    logger.info("   AI Runs: %s", config.get_ai_runs())
+    logger.info("   Reasoning Effort: %s", config.get_reasoning_effort())
+    logger.info("   Text Verbosity: %s", config.get_text_verbosity())
+    logger.info("   Majority Vote: %s", config.ENABLE_MAJORITY_VOTE)
+    logger.info("   Debug Mode: %s", config.DEBUG_MODE)
+    logger.info("   Excel Path: %s", config.EXCEL_PATH)
+    logger.info("   Output Directory: %s", config.RESULTS_DIR)
     if stage == "parse":
-        print(f"   Skip Bad JSON: {skip_bad}")
-        print(f"   Parse All Runs: {parse_all_runs}")
+        logger.info("   Skip Bad JSON: %s", skip_bad)
+        logger.info("   Parse All Runs: %s", parse_all_runs)
 
     # 验证配置
     if not config.validate():
-        print("\n❌ Configuration validation failed!")
-        print("Please check:")
-        print("  - OPENAI_API_KEY is set in .env file")
-        print("  - Codebook file exists at:", config.CODINGTASK_MD)
-        print("  - Excel file exists at:", config.EXCEL_PATH)
+        logger.error("Configuration validation failed!")
+        logger.error("Please check:")
+        logger.error("  - OPENAI_API_KEY is set in .env file")
+        logger.error("  - Codebook file exists at: %s", config.CODINGTASK_MD)
+        logger.error("  - Excel file exists at: %s", config.EXCEL_PATH)
         return 1
 
-    print("\n✅ Configuration validated")
+    logger.info("✅ Configuration validated")
 
     raw_output_path = None
     parse_targets = []
@@ -150,29 +117,29 @@ def main():
             if raw_path_arg.is_dir():
                 raw_path_arg.mkdir(parents=True, exist_ok=True)
                 raw_output_path = raw_path_arg / f"raw_responses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jsonl"
-                print(f"\n📁 Raw output target: {raw_output_path}")
+                logger.info("📁 Raw output target: %s", raw_output_path)
             else:
                 raw_output_path = raw_path_arg
-                print(f"\n📁 Raw output target: {raw_output_path}")
+                logger.info("📁 Raw output target: %s", raw_output_path)
     elif stage == "parse":
         def _collect_parse_targets(directory: Path):
             aggregated_dir = directory / "aggregated"
             if aggregated_dir.exists() and aggregated_dir.is_dir():
                 aggregated_files = sorted(aggregated_dir.glob("*.json"))
                 if aggregated_files:
-                    print(f"\n📁 Found {len(aggregated_files)} aggregated JSON file(s) in {aggregated_dir}")
+                    logger.info("📁 Found %s aggregated JSON file(s) in %s", len(aggregated_files), aggregated_dir)
                     return aggregated_files
 
             aggregated_files = sorted(directory.glob("raw_responses_*.json"))
             if aggregated_files:
-                print(f"\n📁 Found {len(aggregated_files)} aggregated JSON file(s) in {directory}")
+                logger.info("📁 Found %s aggregated JSON file(s) in %s", len(aggregated_files), directory)
                 return aggregated_files
 
             json_files = sorted(directory.glob("*.json"))
             if json_files:
-                print(f"\n📁 Found {len(json_files)} JSON file(s) in {directory}; will merge during parse")
+                logger.info("📁 Found %s JSON file(s) in %s; will merge during parse", len(json_files), directory)
                 return [directory]
-            print(f"\n❌ No JSON files found in directory: {directory}")
+            logger.error("No JSON files found in directory: %s", directory)
             return []
 
         if raw_path_arg:
@@ -184,19 +151,19 @@ def main():
                 suffix = raw_path_arg.suffix.lower()
                 if suffix == ".json":
                     parse_targets = [raw_path_arg]
-                    print(f"\n📁 Parsing raw file: {raw_path_arg}")
+                    logger.info("📁 Parsing raw file: %s", raw_path_arg)
                 else:
-                    print(f"\n❌ Unsupported raw file type: {raw_path_arg.suffix}")
+                    logger.error("Unsupported raw file type: %s", raw_path_arg.suffix)
                     return 1
             else:
-                print(f"\n❌ Raw path not found: {raw_path_arg}")
+                logger.error("Raw path not found: %s", raw_path_arg)
                 return 1
         else:
             default_dir = config.RAW_OUTPUT_DIR
             parse_targets = _collect_parse_targets(default_dir)
             if not parse_targets:
                 return 1
-            print(f"\n📁 Using default raw directory: {default_dir}")
+            logger.info("📁 Using default raw directory: %s", default_dir)
 
     raw_input_param = None
     if stage in {"raw", "full"}:
@@ -209,27 +176,27 @@ def main():
     skipped_batches = []
 
     # 执行批量分析
-    print("\n" + "=" * 60)
-    print("STARTING BATCH ANALYSIS")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("STARTING BATCH ANALYSIS")
+    logger.info("=" * 60)
 
     def verify_results(results_df):
         if results_df is not None and not results_df.empty:
-            print("\n" + "=" * 60)
-            print("FINAL VERIFICATION")
-            print("=" * 60)
+            logger.info("=" * 60)
+            logger.info("FINAL VERIFICATION")
+            logger.info("=" * 60)
 
             article_ids = results_df['#'].unique()
-            print(f"Unique articles: {len(article_ids)}")
+            logger.info("Unique articles: %s", len(article_ids))
 
             # 检查前3篇文章
             for article_id in article_ids[:3]:
                 article_rows = results_df[results_df['#'] == article_id]
                 sources = article_rows['source'].tolist()
-                print(f"Article #{article_id}: {len(sources)} rows ({sources[0]}, ...)")
+                logger.info("Article #%s: %s rows (%s, ...)", article_id, len(sources), sources[0])
 
                 if 'human' not in sources:
-                    print(f"  ⚠️ WARNING: Missing human row")
+                    logger.warning("  ⚠️ WARNING: Missing human row")
 
                 ai_sources = [s for s in sources if s != 'human']
                 expected_runs = analyzer.last_parse_run_counts.get(str(article_id))
@@ -252,9 +219,9 @@ def main():
                     expected_ai += 1  # +1 for majority vote row
 
                 if len(ai_sources) != expected_ai:
-                    print(f"  ⚠️ WARNING: Expected {expected_ai} AI rows, found {len(ai_sources)}")
+                    logger.warning("  ⚠️ WARNING: Expected %s AI rows, found %s", expected_ai, len(ai_sources))
         else:
-            print("\n⚠️ No results dataframe produced.")
+            logger.warning("⚠️ No results dataframe produced.")
 
     try:
         if stage == "raw":
@@ -264,19 +231,19 @@ def main():
                 stage="raw",
                 use_all_runs=parse_all_runs
             )
-            print(f"\n📦 Raw responses written to: {raw_output}")
-            print(f"\n⏰ End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            print("=" * 60)
-            print("✅ RAW GENERATION COMPLETED")
-            print("=" * 60)
+            logger.info("📦 Raw responses written to: %s", raw_output)
+            logger.info("⏰ End time: %s", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            logger.info("=" * 60)
+            logger.info("✅ RAW GENERATION COMPLETED")
+            logger.info("=" * 60)
             return 0
 
         if stage == "parse" and len(parse_targets) > 1:
             total_runs = len(parse_targets)
             for idx, jsonl_path in enumerate(parse_targets, start=1):
-                print("\n" + "-" * 60)
-                print(f"BATCH {idx}/{total_runs}: {jsonl_path}")
-                print("-" * 60)
+                logger.info("-" * 60)
+                logger.info("BATCH %s/%s: %s", idx, total_runs, jsonl_path)
+                logger.info("-" * 60)
                 try:
                     results_df = analyzer.process_batch(
                         excel_path=str(config.EXCEL_PATH),
@@ -285,7 +252,7 @@ def main():
                         use_all_runs=parse_all_runs
                     )
                 except Exception as exc:
-                    print(f"\n❌ Failed to parse {jsonl_path}: {exc}")
+                    logger.exception("Failed to parse %s: %s", jsonl_path, exc)
                     if skip_bad:
                         skipped_batches.append((jsonl_path, str(exc)))
                         continue
@@ -293,7 +260,7 @@ def main():
 
                 if (results_df is None) or results_df.empty:
                     message = "Parse returned no results"
-                    print(f"  ⚠️ {message}")
+                    logger.warning("  ⚠️ %s", message)
                     if skip_bad:
                         skipped_batches.append((jsonl_path, message))
                         continue
@@ -301,19 +268,19 @@ def main():
                 verify_results(results_df)
 
                 if analyzer.last_raw_source_path:
-                    print(f"\n📁 Raw source path: {analyzer.last_raw_source_path}")
+                    logger.info("📁 Raw source path: %s", analyzer.last_raw_source_path)
 
-                print(f"\n⏰ End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                print("=" * 60)
-                print("✅ PIPELINE COMPLETED SUCCESSFULLY")
-                print("=" * 60)
+                logger.info("⏰ End time: %s", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                logger.info("=" * 60)
+                logger.info("✅ PIPELINE COMPLETED SUCCESSFULLY")
+                logger.info("=" * 60)
 
             if skipped_batches:
-                print("\n" + "-" * 60)
-                print("SKIPPED BATCHES SUMMARY")
-                print("-" * 60)
+                logger.info("-" * 60)
+                logger.info("SKIPPED BATCHES SUMMARY")
+                logger.info("-" * 60)
                 for path, reason in skipped_batches:
-                    print(f"⏭️ {path} -> {reason}")
+                    logger.info("⏭️ %s -> %s", path, reason)
             return 0
 
         try:
@@ -325,33 +292,31 @@ def main():
             )
         except Exception as exc:
             if stage == "parse" and skip_bad:
-                print(f"\n❌ Failed to parse {raw_input_param}: {exc}")
-                print("⏭️ Skipping per --skip-bad flag")
+                logger.exception("Failed to parse %s: %s", raw_input_param, exc)
+                logger.info("⏭️ Skipping per --skip-bad flag")
                 return 0
             raise
 
         if stage == "parse" and ((results_df is None) or results_df.empty):
             message = "Parse returned no results"
-            print(f"❌ {message}")
+            logger.error("%s", message)
             if skip_bad:
-                print("⏭️ Skipping per --skip-bad flag")
+                logger.info("⏭️ Skipping per --skip-bad flag")
                 return 0
             return 1
 
         verify_results(results_df)
 
         if stage in {"parse", "full"} and analyzer.last_raw_source_path:
-            print(f"\n📁 Raw source path: {analyzer.last_raw_source_path}")
+            logger.info("📁 Raw source path: %s", analyzer.last_raw_source_path)
 
-        print(f"\n⏰ End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print("=" * 60)
-        print("✅ PIPELINE COMPLETED SUCCESSFULLY")
-        print("=" * 60)
+        logger.info("⏰ End time: %s", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        logger.info("=" * 60)
+        logger.info("✅ PIPELINE COMPLETED SUCCESSFULLY")
+        logger.info("=" * 60)
 
     except Exception as e:
-        print(f"\n❌ Pipeline failed with error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("Pipeline failed with error: %s", e)
         return 1
 
     return 0

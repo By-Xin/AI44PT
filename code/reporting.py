@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import logging
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Tuple
@@ -12,6 +13,8 @@ from openpyxl.utils import get_column_letter
 
 from config import Config
 from response_parser import ResponseParser
+
+logger = logging.getLogger(__name__)
 
 # Shared column identifiers used across batch_analyzer/reporting.
 AI_SUCCESS_COUNT_COLUMN = "AI Successful Runs"
@@ -1267,17 +1270,17 @@ def _print_status_report(status_map: Mapping[str, str], run_stats: Mapping[str, 
     if not status_map:
         return
 
-    print("\n📌 Article status breakdown:")
+    logger.info("📌 Article status breakdown:")
     status_counter = Counter(status_map.values())
     for status, count in status_counter.most_common():
-        print(f"  - {status}: {count}")
+        logger.info("  - %s: %s", status, count)
 
     technical_articles = [key for key, value in status_map.items() if value == "Technical_Failure"]
     if not technical_articles:
         return
 
-    print("\n  Technical issues by article:")
+    logger.info("  Technical issues by article:")
     for article_id in technical_articles:
         counter = run_stats.get(article_id, Counter())
         issues = ", ".join(f"{label}:{count}" for label, count in counter.items()) or "No AI runs recorded"
-        print(f"    • Article {article_id}: {issues}")
+        logger.info("    • Article %s: %s", article_id, issues)

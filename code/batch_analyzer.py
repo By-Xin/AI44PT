@@ -206,7 +206,7 @@ class BatchAnalyzer:
             return analysis_text, api_timestamp, record
 
         if error_message:
-            print(f"  ⚠️ Error in analysis (run {run_index}): {error_message}")
+            self.logger.warning("  ⚠️ Error in analysis (run %s): %s", run_index, error_message)
         return None, api_timestamp, record
 
     def analyze_article_multiple_runs(
@@ -253,11 +253,11 @@ class BatchAnalyzer:
             return results
 
         # 多次独立运行
-        print(f"    🔄 Running {ai_runs} independent iterations...")
+        self.logger.info("    🔄 Running %s independent iterations...", ai_runs)
         answer_sets = []
 
         for i in range(ai_runs):
-            print(f"      Iteration {i+1}/{ai_runs}...")
+            self.logger.info("      Iteration %s/%s...", i + 1, ai_runs)
             response, timestamp, record = self.analyze_single_article(
                 article_pages, coding_task_pages, executive_summary_pages, main_body_pages, article_meta, run_index=i+1
             )
@@ -268,14 +268,14 @@ class BatchAnalyzer:
                 if answers:
                     answer_sets.append((answers, timestamp))
                 else:
-                    print(f"      ⚠️ Iteration {i+1} failed to parse")
+                    self.logger.warning("      ⚠️ Iteration %s failed to parse", i + 1)
                     answer_sets.append((None, timestamp))
             else:
-                print(f"      ⚠️ Iteration {i+1} failed")
+                self.logger.warning("      ⚠️ Iteration %s failed", i + 1)
                 answer_sets.append((None, timestamp))
 
         successful = sum(1 for x, _ in answer_sets if x is not None)
-        print(f"    ✅ Completed {successful}/{ai_runs} successful runs")
+        self.logger.info("    ✅ Completed %s/%s successful runs", successful, ai_runs)
 
         if collect_records:
             return answer_sets, raw_records
@@ -414,7 +414,7 @@ class BatchAnalyzer:
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(record, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"  ⚠️ Failed to save raw response: {e}")
+            self.logger.warning("  ⚠️ Failed to save raw response: %s", e)
         return record
 
     def _load_raw_records(self, source_path: Path) -> List[Dict]:
@@ -430,15 +430,15 @@ class BatchAnalyzer:
                             if isinstance(item, dict):
                                 records.append(item)
                             else:
-                                print(f"  ⚠️ Skipping non-dict entry in {path.name}")
+                                self.logger.warning("  ⚠️ Skipping non-dict entry in %s", path.name)
                     elif isinstance(data, dict):
                         records.append(data)
                     else:
-                        print(f"  ⚠️ Unsupported JSON structure in {path.name}")
+                        self.logger.warning("  ⚠️ Unsupported JSON structure in %s", path.name)
             except FileNotFoundError:
-                print(f"❌ Raw JSON file not found: {path}")
+                self.logger.error("❌ Raw JSON file not found: %s", path)
             except json.JSONDecodeError as exc:
-                print(f"  ⚠️ Skipping malformed JSON file {path.name}: {exc}")
+                self.logger.warning("  ⚠️ Skipping malformed JSON file %s: %s", path.name, exc)
 
         def load_jsonl_file(path: Path):
             try:
@@ -452,11 +452,15 @@ class BatchAnalyzer:
                             if isinstance(obj, dict):
                                 records.append(obj)
                             else:
-                                print(f"  ⚠️ Skipping non-dict entry in {path.name} line {line_num}")
+                                self.logger.warning(
+                                    "  ⚠️ Skipping non-dict entry in %s line %s", path.name, line_num
+                                )
                         except json.JSONDecodeError as exc:
-                            print(f"  ⚠️ Skipping malformed JSONL line {line_num} in {path.name}: {exc}")
+                            self.logger.warning(
+                                "  ⚠️ Skipping malformed JSONL line %s in %s: %s", line_num, path.name, exc
+                            )
             except FileNotFoundError:
-                print(f"❌ Raw JSONL file not found: {path}")
+                self.logger.error("❌ Raw JSONL file not found: %s", path)
 
         if source_path.is_dir():
             json_files = sorted(source_path.glob("*.json"))
@@ -469,7 +473,7 @@ class BatchAnalyzer:
                 for jsonl_file in jsonl_files:
                     load_jsonl_file(jsonl_file)
             else:
-                print(f"❌ No JSON/JSONL files found in directory: {source_path}")
+                self.logger.error("❌ No JSON/JSONL files found in directory: %s", source_path)
 
             return records
 
@@ -479,7 +483,7 @@ class BatchAnalyzer:
         elif suffix == ".jsonl":
             load_jsonl_file(source_path)
         else:
-            print(f"❌ Unsupported raw data format: {source_path}")
+            self.logger.error("❌ Unsupported raw data format: %s", source_path)
         return records
 
     def generate_raw_responses(
@@ -489,16 +493,16 @@ class BatchAnalyzer:
     ) -> Path:
         """生成原始响应并保存为JSON数组（并发 + JSONL流式写入）"""
         excel_path = excel_path or str(self.config.EXCEL_PATH)
-        print(f"\n📥 Loading Excel for raw generation: {excel_path}")
+        self.logger.info("📥 Loading Excel for raw generation: %s", excel_path)
         df_human = pd.read_excel(excel_path)
         article_count = len(df_human)
-        print(f"Found {article_count} articles to process for raw generation")
+        self.logger.info("Found %s articles to process for raw generation", article_count)
 
         if self.config.DEBUG_MODE:
-            print("⚙️ Debug mode active: limiting to first 2 articles")
+            self.logger.info("⚙️ Debug mode active: limiting to first 2 articles")
             df_human = df_human.head(2).copy()
             article_count = len(df_human)
-            print(f"Processing subset size: {article_count}")
+            self.logger.info("Processing subset size: %s", article_count)
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         if output_path:
@@ -521,8 +525,8 @@ class BatchAnalyzer:
         final_output_path = run_dir / final_filename
         streaming_output_path = final_output_path.with_suffix(".jsonl")
 
-        print(f"\n📝 Aggregated raw (array) will be written to: {final_output_path}")
-        print(f"🧮 Streaming JSONL (append per call) will be written to: {streaming_output_path}")
+        self.logger.info("📝 Aggregated raw (array) will be written to: %s", final_output_path)
+        self.logger.info("🧮 Streaming JSONL (append per call) will be written to: %s", streaming_output_path)
         streaming_output_path.write_text("", encoding="utf-8")
 
         # 预加载Codebook
@@ -530,10 +534,10 @@ class BatchAnalyzer:
         executive_summary_pages = self.document_reader.read_markdown(str(self.config.EXECUTIVESUMMARY_MD))
         main_body_pages = self.document_reader.read_markdown(str(self.config.MAINBODY_MD))
         
-        print(f"Reference documents loaded:")
-        print(f"  - Coding Task: {len(coding_task_pages)} sections")
-        print(f"  - Executive Summary: {len(executive_summary_pages)} sections")
-        print(f"  - Main Body: {len(main_body_pages)} sections")
+        self.logger.info("Reference documents loaded:")
+        self.logger.info("  - Coding Task: %s sections", len(coding_task_pages))
+        self.logger.info("  - Executive Summary: %s sections", len(executive_summary_pages))
+        self.logger.info("  - Main Body: %s sections", len(main_body_pages))
 
         generation_stats = defaultdict(int)
         ai_runs = self.config.get_ai_runs()
@@ -666,7 +670,13 @@ class BatchAnalyzer:
             if article_semaphore:
                 article_semaphore.acquire()
 
-            print(f"\n[{seq_idx}/{article_count}] Scheduling raw generation for article #{article_id}: {title[:50]}...")
+            self.logger.info(
+                "[%s/%s] Scheduling raw generation for article #%s: %s...",
+                seq_idx,
+                article_count,
+                article_id,
+                title[:50]
+            )
 
             article_meta = {
                 "article_id": article_id,
@@ -679,7 +689,7 @@ class BatchAnalyzer:
 
             pdf_path = self._find_pdf(article_id)
             if not pdf_path:
-                print("  ⚠️ PDF not found; recording error runs")
+                self.logger.warning("  ⚠️ PDF not found; recording error runs")
                 generation_stats['pdf_not_found'] += 1
                 article_meta['pdf_path'] = None
                 
@@ -707,11 +717,11 @@ class BatchAnalyzer:
 
             article_meta['pdf_path'] = pdf_path
             generation_stats['pdf_found'] += 1
-            print(f"  📄 Using PDF: {os.path.basename(pdf_path)}")
+            self.logger.info("  📄 Using PDF: %s", os.path.basename(pdf_path))
 
             article_pages = self.document_reader.read_pdf(pdf_path)
             if not article_pages:
-                print("  ⚠️ Failed to read PDF; recording error runs")
+                self.logger.warning("  ⚠️ Failed to read PDF; recording error runs")
                 generation_stats['pdf_read_error'] += 1
                 
                 providers = self.config.ENABLED_PROVIDERS or [self.config.LLM_PROVIDER]
@@ -736,18 +746,23 @@ class BatchAnalyzer:
                     article_semaphore.release()
                 continue
 
-            print(f"  📖 PDF loaded: {len(article_pages)} pages")
+            self.logger.info("  📖 PDF loaded: %s pages", len(article_pages))
             
             providers = self.available_providers or self.config.ENABLED_PROVIDERS
             if not providers:
                 providers = [self.config.LLM_PROVIDER]
                 
-            print(f"  🤖 Scheduling {ai_runs} run(s) for each of {len(providers)} providers: {providers}...")
+            self.logger.info(
+                "  🤖 Scheduling %s run(s) for each of %s providers: %s...",
+                ai_runs,
+                len(providers),
+                providers
+            )
 
             for provider in providers:
                 client = self.clients.get(provider)
                 if not client:
-                    print(f"  ⚠️ Client for provider '{provider}' not initialized. Skipping.")
+                    self.logger.warning("  ⚠️ Client for provider '%s' not initialized. Skipping.", provider)
                     continue
                     
                 model_name = self.config.GEMINI_MODEL if provider == "gemini" else self.config.CLS_MODEL
@@ -822,7 +837,7 @@ class BatchAnalyzer:
                         article_pending_tasks.pop(article_id, None)
                         if article_semaphore:
                             article_semaphore.release()
-                        print(f"  ✅ Completed article #{article_id}")
+                        self.logger.info("  ✅ Completed article #%s", article_id)
 
             if total_tasks:
                 progress_step = max(1, total_tasks // 10)
@@ -832,10 +847,14 @@ class BatchAnalyzer:
                         s_err = generation_stats.get('analysis_error', 0)
                         s_pdf_missing = generation_stats.get('pdf_not_found', 0)
                         s_pdf_err = generation_stats.get('pdf_error', 0)
-                    print(
-                        f"  ↪️ Progress: {done_calls}/{total_tasks} calls | "
-                        f"success {s_success}, errors {s_err}, "
-                        f"pdf_missing {s_pdf_missing}, pdf_read_err {s_pdf_err}"
+                    self.logger.info(
+                        "  ↪️ Progress: %s/%s calls | success %s, errors %s, pdf_missing %s, pdf_read_err %s",
+                        done_calls,
+                        total_tasks,
+                        s_success,
+                        s_err,
+                        s_pdf_missing,
+                        s_pdf_err
                     )
 
         executor.shutdown(wait=True)
@@ -843,12 +862,12 @@ class BatchAnalyzer:
         with open(final_output_path, 'w', encoding='utf-8') as json_file:
             json.dump(aggregated_records, json_file, ensure_ascii=False, indent=2)
 
-        print("\n📦 Raw generation complete")
-        print(f"  ✅ Successful API responses: {generation_stats['success']}")
-        print(f"  ⚠️ API/analysis errors: {generation_stats['analysis_error']}")
-        print(f"  ⚠️ PDF not found: {generation_stats['pdf_not_found']}")
-        print(f"  ⚠️ PDF read errors: {generation_stats['pdf_read_error']}")
-        print(f"  📄 Streaming JSONL: {streaming_output_path}")
+        self.logger.info("📦 Raw generation complete")
+        self.logger.info("  ✅ Successful API responses: %s", generation_stats['success'])
+        self.logger.info("  ⚠️ API/analysis errors: %s", generation_stats['analysis_error'])
+        self.logger.info("  ⚠️ PDF not found: %s", generation_stats['pdf_not_found'])
+        self.logger.info("  ⚠️ PDF read errors: %s", generation_stats['pdf_read_error'])
+        self.logger.info("  📄 Streaming JSONL: %s", streaming_output_path)
 
         self.last_raw_source_path = final_output_path
         return final_output_path
@@ -866,37 +885,37 @@ class BatchAnalyzer:
         raw_source = Path(json_path)
         self.last_raw_source_path = raw_source
 
-        print(f"\n📥 Loading Excel for parsing: {excel_path}")
+        self.logger.info("📥 Loading Excel for parsing: %s", excel_path)
         df_human = pd.read_excel(excel_path)
         total_articles = len(df_human)
-        print(f"Found {total_articles} articles to parse")
+        self.logger.info("Found %s articles to parse", total_articles)
 
         if self.config.DEBUG_MODE:
-            print("⚙️ Debug mode active: limiting to first 2 articles")
+            self.logger.info("⚙️ Debug mode active: limiting to first 2 articles")
             df_human = df_human.head(2).copy()
             total_articles = len(df_human)
-            print(f"Parsing subset size: {total_articles}")
+            self.logger.info("Parsing subset size: %s", total_articles)
 
         # 确保新增问题列存在
         self._ensure_question_columns(df_human)
 
         # 获取列名映射
         column_mapping = self._get_column_mapping(df_human.columns)
-        print(f"Found {len(column_mapping)} question mappings")
+        self.logger.info("Found %s question mappings", len(column_mapping))
 
         self.last_parse_run_counts = {}
 
         # 读取原始记录
         if raw_source.is_dir():
-            print(f"\n📂 Reading raw responses from directory: {raw_source}")
+            self.logger.info("📂 Reading raw responses from directory: %s", raw_source)
         elif raw_source.suffix.lower() == ".json":
-            print(f"\n📂 Reading raw JSON file: {raw_source}")
+            self.logger.info("📂 Reading raw JSON file: %s", raw_source)
         else:
-            print(f"\n📂 Reading raw responses from: {raw_source}")
+            self.logger.info("📂 Reading raw responses from: %s", raw_source)
 
         raw_records = self._load_raw_records(raw_source)
         if not raw_records:
-            print("❌ No raw records found; aborting parse stage")
+            self.logger.error("❌ No raw records found; aborting parse stage")
             return pd.DataFrame()
 
         records_by_article = defaultdict(list)
@@ -911,7 +930,7 @@ class BatchAnalyzer:
                 r.get('timestamp') or ''
             ))
 
-        print(f"Grouped raw records for {len(records_by_article)} articles")
+        self.logger.info("Grouped raw records for %s articles", len(records_by_article))
 
         # 重置统计
         self.stats = {
@@ -931,7 +950,7 @@ class BatchAnalyzer:
             article_id = str(row['#'])
             title = row.get('Title of the Paper', 'Unknown')
 
-            print(f"\n[{seq_idx}/{total_articles}] Parsing article #{article_id}: {title[:50]}...")
+            self.logger.info("[%s/%s] Parsing article #%s: %s...", seq_idx, total_articles, article_id, title[:50])
             q_human_col = column_mapping.get(15)
             q_ai_col = column_mapping.get(self.config.Q_ID_CLASSIFICATION)
 
@@ -946,7 +965,7 @@ class BatchAnalyzer:
 
             article_records = records_by_article.get(article_id, [])
             if not article_records:
-                print("  ⚠️ No raw records found; adding RAW_NOT_FOUND rows")
+                self.logger.warning("  ⚠️ No raw records found; adding RAW_NOT_FOUND rows")
                 results.extend(self._create_error_rows(row, 'RAW_NOT_FOUND', column_mapping))
                 self.stats['analysis_error'] += 1
                 continue
@@ -998,7 +1017,7 @@ class BatchAnalyzer:
 
             for pos_idx, (run_number, record) in enumerate(run_entries):
                 if not record:
-                    print(f"  ⚠️ Missing raw record for run {run_number}; inserting placeholder")
+                    self.logger.warning("  ⚠️ Missing raw record for run %s; inserting placeholder", run_number)
                     placeholder_ts = self._get_timestamp()
                     ai_row = self._create_ai_row(row, run_number, None, placeholder_ts, column_mapping, model_name=None, provider=None)
                     ai_row['Analysis_Status'] = f'RAW_MISSING_RUN{run_number}_{placeholder_ts}'
@@ -1021,7 +1040,7 @@ class BatchAnalyzer:
                         ai_answer_sets.append((answers, api_timestamp))
                         ai_success_count += 1
                     else:
-                        print(f"  ⚠️ Parse error for run {run_number}")
+                        self.logger.warning("  ⚠️ Parse error for run %s", run_number)
                         ai_row = self._create_ai_row(row, run_number, None, api_timestamp, column_mapping, model_name=model_name, provider=provider)
                         ai_row['Analysis_Status'] = f'PARSE_ERROR_RUN{run_number}_{api_timestamp}'
                         self.stats['analysis_error'] += 1
@@ -1117,7 +1136,7 @@ class BatchAnalyzer:
                 self.stats['success'] += 1
 
         if not results:
-            print("❌ No results generated from raw parsing")
+            self.logger.error("❌ No results generated from raw parsing")
             return pd.DataFrame()
 
         df_results = pd.DataFrame(results)
@@ -1138,19 +1157,19 @@ class BatchAnalyzer:
             type_summary_column=self.TYPE_SUMMARY_COL,
         )
 
-        print(f"\n📊 Results saved to: {excel_output_path}")
+        self.logger.info("📊 Results saved to: %s", excel_output_path)
 
         if csv_output_path:
             csv_path = Path(csv_output_path).expanduser()
             csv_path.parent.mkdir(parents=True, exist_ok=True)
             df_results.to_csv(csv_path, index=False)
-            print(f"📝 CSV export saved to: {csv_path}")
+            self.logger.info("📝 CSV export saved to: %s", csv_path)
 
         if json_output_path:
             json_path_out = Path(json_output_path).expanduser()
             json_path_out.parent.mkdir(parents=True, exist_ok=True)
             df_results.to_json(json_path_out, orient='records', force_ascii=False, indent=2)
-            print(f"📝 JSON export saved to: {json_path_out}")
+            self.logger.info("📝 JSON export saved to: %s", json_path_out)
 
         self._print_summary(df_results, df_human)
         return df_results
@@ -1182,7 +1201,7 @@ class BatchAnalyzer:
                 df[col_name] = ''
                 added.append(col_name)
         if added:
-            print(f"Added {len(added)} missing question columns")
+            self.logger.info("Added %s missing question columns", len(added))
 
     def _create_error_rows(
         self,
@@ -1275,7 +1294,7 @@ class BatchAnalyzer:
         numeric_stats: Dict[int, Dict]
     ) -> Optional[Tuple[Dict, Dict]]:
         """创建多数投票结果行"""
-        print(f"  🗳️ Performing majority vote...")
+        self.logger.info("  🗳️ Performing majority vote...")
         if not majority_results and not numeric_stats:
             return None
 
@@ -1322,7 +1341,7 @@ class BatchAnalyzer:
             if q_num in column_mapping and q_num not in numeric_stats:
                 majority_row[column_mapping[q_num]] = '[SUBJECTIVE - NO VOTE]'
 
-        print(f"    ✅ Majority vote completed")
+        self.logger.info("    ✅ Majority vote completed")
         majority_row[self.AI_AGREEMENT_COL] = ''
         majority_row[self.HUMAN_VS_AI_COL] = ''
         majority_row[self.HUMAN_VS_CONSENSUS_COL] = ''
@@ -1562,7 +1581,7 @@ class BatchAnalyzer:
         column_mapping: Dict[int, str]
     ) -> pd.DataFrame:
         """添加派生列（Decision Tree 和 Consensus）"""
-        print("\n🌳 Calculating derived classifications...")
+        self.logger.info("🌳 Calculating derived classifications...")
 
         decision_tree_col = 'Decision Tree 4PT'
         type_consensus_col = 'Type consensus (Q18-Q25 summary)'
@@ -1646,15 +1665,14 @@ class BatchAnalyzer:
 
     def _print_summary(self, df_results: pd.DataFrame, df_human: pd.DataFrame):
         """打印分析汇总"""
-        print("\n" + "=" * 60)
-        print("ANALYSIS SUMMARY")
-        print("=" * 60)
-        print(f"Total articles processed: {len(df_human)}")
-        print(f"✅ Successful analyses: {self.stats['success']}")
-        print(f"⚠️ PDF not found: {self.stats['pdf_not_found']}")
-        print(f"⚠️ PDF read errors: {self.stats['pdf_error']}")
-        print(f"⚠️ Analysis errors: {self.stats['analysis_error']}")
+        self.logger.info("=" * 60)
+        self.logger.info("ANALYSIS SUMMARY")
+        self.logger.info("=" * 60)
+        self.logger.info("Total articles processed: %s", len(df_human))
+        self.logger.info("✅ Successful analyses: %s", self.stats['success'])
+        self.logger.info("⚠️ PDF not found: %s", self.stats['pdf_not_found'])
+        self.logger.info("⚠️ PDF read errors: %s", self.stats['pdf_error'])
+        self.logger.info("⚠️ Analysis errors: %s", self.stats['analysis_error'])
 
         if 'source' in df_results.columns:
-            print("\nSource distribution:")
-            print(df_results['source'].value_counts())
+            self.logger.info("Source distribution:\n%s", df_results['source'].value_counts())

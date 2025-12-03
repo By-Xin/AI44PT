@@ -2,6 +2,7 @@
 AI响应解析模块 - 处理AI模型返回的结构化响应
 """
 import re
+import logging
 from typing import Dict, Optional
 from config import Config
 
@@ -16,6 +17,7 @@ class ResponseParser:
         Args:
             config: 批处理配置对象
         """
+        self.logger = logging.getLogger(__name__)
         self.config = config or Config()
 
     def parse_response(self, response_text: str) -> Dict[int, str]:
@@ -59,7 +61,11 @@ class ResponseParser:
 
         # 验证解析完整性
         if len(answers) < self.config.TOTAL_QUESTIONS:
-            print(f"    ⚠️ AI response format error: Only parsed {len(answers)}/{self.config.TOTAL_QUESTIONS} questions")
+            self.logger.warning(
+                "⚠️ AI response format error: Only parsed %s/%s questions",
+                len(answers),
+                self.config.TOTAL_QUESTIONS
+            )
             return {}
 
         # 标准化特定类型的答案

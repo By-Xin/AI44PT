@@ -3,6 +3,7 @@
 """
 import os
 import random
+import logging
 from pathlib import Path
 from typing import List
 from dotenv import load_dotenv
@@ -227,48 +228,48 @@ class Config:
         Returns:
             bool: 配置是否有效
         """
+        logger = logging.getLogger(__name__)
+
         # Validate all enabled providers
         if "openai" in cls.ENABLED_PROVIDERS:
             if not cls.OPENAI_API_KEY:
-                print("Error: OPENAI_API_KEY not found in environment")
-                print("Please set it in .env file")
+                logger.error("OPENAI_API_KEY not found in environment. Please set it in .env file.")
                 return False
         
         if "gemini" in cls.ENABLED_PROVIDERS:
             if not cls.GEMINI_API_KEY:
-                print("Error: GEMINI_API_KEY not found in environment")
-                print("Please set it in .env file")
+                logger.error("GEMINI_API_KEY not found in environment. Please set it in .env file.")
                 return False
 
         # Legacy validation for single provider if ENABLED_PROVIDERS is not used/empty (fallback)
         if not cls.ENABLED_PROVIDERS:
             if cls.LLM_PROVIDER == "openai":
                 if not cls.OPENAI_API_KEY:
-                    print("Error: OPENAI_API_KEY not found in environment")
+                    logger.error("OPENAI_API_KEY not found in environment")
                     return False
             elif cls.LLM_PROVIDER == "gemini":
                 if not cls.GEMINI_API_KEY:
-                    print("Error: GEMINI_API_KEY not found in environment")
+                    logger.error("GEMINI_API_KEY not found in environment")
                     return False
 
         if not cls.CODINGTASK_MD.exists():
-            print(f"Error: Coding Task not found at {cls.CODINGTASK_MD}")
+            logger.error("Coding Task not found at %s", cls.CODINGTASK_MD)
             return False
 
         if not cls.EXECUTIVESUMMARY_MD.exists():
-            print(f"Error: Executive Summary not found at {cls.EXECUTIVESUMMARY_MD}")
+            logger.error("Executive Summary not found at %s", cls.EXECUTIVESUMMARY_MD)
             return False
 
         if not cls.MAINBODY_MD.exists():
-            print(f"Error: Main Body not found at {cls.MAINBODY_MD}")
+            logger.error("Main Body not found at %s", cls.MAINBODY_MD)
             return False
 
         if not cls.EXCEL_PATH.exists():
-            print(f"Error: Excel file not found at {cls.EXCEL_PATH}")
+            logger.error("Excel file not found at %s", cls.EXCEL_PATH)
             return False
 
         if not cls.PDF_FOLDER.exists():
-            print(f"Error: PDF folder not found at {cls.PDF_FOLDER}")
+            logger.error("PDF folder not found at %s", cls.PDF_FOLDER)
             return False
 
         return True
@@ -276,33 +277,34 @@ class Config:
     @classmethod
     def display_config(cls):
         """显示当前配置（用于调试）"""
-        print("=" * 60)
-        print("CONFIGURATION")
-        print("=" * 60)
-        print(f"Project Root: {cls.PROJECT_ROOT}")
-        print(f"Coding Task: {cls.CODINGTASK_MD}")
-        print(f"Exec Summary: {cls.EXECUTIVESUMMARY_MD}")
-        print(f"Main Body: {cls.MAINBODY_MD}")
-        print(f"Excel Path: {cls.EXCEL_PATH}")
-        print(f"PDF Folder: {cls.PDF_FOLDER}")
-        print(f"Results Dir: {cls.RESULTS_DIR}")
-        print(f"LLM Provider: {cls.LLM_PROVIDER}")
-        print(f"Enabled Providers: {cls.ENABLED_PROVIDERS}")
+        logger = logging.getLogger(__name__)
+        logger.info("=" * 60)
+        logger.info("CONFIGURATION")
+        logger.info("=" * 60)
+        logger.info("Project Root: %s", cls.PROJECT_ROOT)
+        logger.info("Coding Task: %s", cls.CODINGTASK_MD)
+        logger.info("Exec Summary: %s", cls.EXECUTIVESUMMARY_MD)
+        logger.info("Main Body: %s", cls.MAINBODY_MD)
+        logger.info("Excel Path: %s", cls.EXCEL_PATH)
+        logger.info("PDF Folder: %s", cls.PDF_FOLDER)
+        logger.info("Results Dir: %s", cls.RESULTS_DIR)
+        logger.info("LLM Provider: %s", cls.LLM_PROVIDER)
+        logger.info("Enabled Providers: %s", cls.ENABLED_PROVIDERS)
         
         if "openai" in cls.ENABLED_PROVIDERS:
-            print(f"OpenAI Model: {cls.CLS_MODEL}")
-            print(f"OpenAI Key: {'✓ Set' if cls.OPENAI_API_KEY else '✗ Missing'}")
+            logger.info("OpenAI Model: %s", cls.CLS_MODEL)
+            logger.info("OpenAI Key: %s", "✓ Set" if cls.OPENAI_API_KEY else "✗ Missing")
             
         if "gemini" in cls.ENABLED_PROVIDERS:
-            print(f"Gemini Model: {cls.GEMINI_MODEL}")
-            print(f"Gemini Key: {'✓ Set' if cls.GEMINI_API_KEY else '✗ Missing'}")
+            logger.info("Gemini Model: %s", cls.GEMINI_MODEL)
+            logger.info("Gemini Key: %s", "✓ Set" if cls.GEMINI_API_KEY else "✗ Missing")
             
-        print(f"Temperature: {cls.TEMPERATURE}")
-        print(f"AI Runs: {cls.get_ai_runs()}")
-        print(f"Reasoning Effort: {cls.get_reasoning_effort()}")
-        print(f"Text Verbosity: {cls.get_text_verbosity()}")
-        print(f"Majority Vote: {cls.ENABLE_MAJORITY_VOTE}")
-        print(f"Shuffle Questions: {cls.ENABLE_SHUFFLE}")
-        print(f"Debug Mode: {cls.DEBUG_MODE}")
-        print(f"API Key: {'✓ Set' if cls.OPENAI_API_KEY else '✗ Missing'}")
-        print("=" * 60)
+        logger.info("Temperature: %s", cls.TEMPERATURE)
+        logger.info("AI Runs: %s", cls.get_ai_runs())
+        logger.info("Reasoning Effort: %s", cls.get_reasoning_effort())
+        logger.info("Text Verbosity: %s", cls.get_text_verbosity())
+        logger.info("Majority Vote: %s", cls.ENABLE_MAJORITY_VOTE)
+        logger.info("Shuffle Questions: %s", cls.ENABLE_SHUFFLE)
+        logger.info("Debug Mode: %s", cls.DEBUG_MODE)
+        logger.info("API Key: %s", "✓ Set" if cls.OPENAI_API_KEY else "✗ Missing")
+        logger.info("=" * 60)
