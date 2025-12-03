@@ -54,17 +54,36 @@ class BatchAnalyzer:
         self.config.setup_directories()
 
         # 初始化组件
-        if self.config.LLM_PROVIDER == "gemini":
-            self.client = GeminiClient(
-                api_key=self.config.GEMINI_API_KEY,
-                model=self.config.GEMINI_MODEL
-            )
-        else:
-            # Default to OpenAI
-            self.client = OpenAIClient(
+        self.clients = {}
+        
+        # Initialize all enabled clients
+        if "openai" in self.config.ENABLED_PROVIDERS:
+            self.clients["openai"] = OpenAIClient(
                 api_key=self.config.OPENAI_API_KEY,
                 model=self.config.CLS_MODEL
             )
+            
+        if "gemini" in self.config.ENABLED_PROVIDERS:
+            self.clients["gemini"] = GeminiClient(
+                api_key=self.config.GEMINI_API_KEY,
+                model=self.config.GEMINI_MODEL
+            )
+            
+        # Fallback/Legacy support if clients dict is empty but LLM_PROVIDER is set
+        if not self.clients:
+            if self.config.LLM_PROVIDER == "gemini":
+                self.clients["gemini"] = GeminiClient(
+                    api_key=self.config.GEMINI_API_KEY,
+                    model=self.config.GEMINI_MODEL
+                )
+            else:
+                self.clients["openai"] = OpenAIClient(
+                    api_key=self.config.OPENAI_API_KEY,
+                    model=self.config.CLS_MODEL
+                )
+            
+        # Set default client for legacy calls (optional)
+        self.client = self.clients.get(self.config.LLM_PROVIDER) or list(self.clients.values())[0]
             
         self.document_reader = DocumentReader()
         self.parser = ResponseParser(self.config)
@@ -88,7 +107,9 @@ class BatchAnalyzer:
         executive_summary_pages: List[Dict],
         main_body_pages: List[Dict],
         article_meta: Dict,
-        run_index: int
+        run_index: int,
+        client=None,
+        model_name: str = None
     ) -> Tuple[Optional[Dict], str]:
         """
         分析单篇文章（单次运行）
@@ -100,12 +121,18 @@ class BatchAnalyzer:
             main_body_pages: 主体内容页面列表
             article_meta: 文章元数据
             run_index: 运行索引
+            client: LLM客户端实例 (optional, defaults to self.client)
+            model_name: 模型名称 (optional)
 
         Returns:
             (answers_dict, timestamp) 元组
         """
         if not article_pages:
             return None, self._get_timestamp()
+            
+        # Use provided client or default
+        current_client = client or self.client
+        current_model = model_name or (self.config.GEMINI_MODEL if self.config.LLM_PROVIDER == "gemini" else self.config.CLS_MODEL)
 
         # 合并页面内容
         article_text = "\n\n".join([f"Page {p['page']}:\n{p['text']}" for p in article_pages])
@@ -131,7 +158,7 @@ class BatchAnalyzer:
         error_message = None
 
         try:
-            analysis_text = self.client.generate_response(
+            analysis_text = current_client.generate_response(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 temperature=self.config.TEMPERATURE,
@@ -148,7 +175,8 @@ class BatchAnalyzer:
         # 保存原始响应
         record = self._save_raw_response(
             article_meta, run_index, full_prompt_for_record, analysis_text,
-            api_timestamp, status, error_message, error_type=error_type
+            api_timestamp, status, error_message, error_type=error_type,
+            model_name=current_model
         )
 
         if analysis_text:
@@ -293,11 +321,14 @@ class BatchAnalyzer:
         api_timestamp: str,
         status: str,
         error_message: Optional[str] = None,
-        error_type: Optional[str] = None
+        error_type: Optional[str] = None,
+        model_name: Optional[str] = None
     ) -> Dict:
         """构建原始响应记录"""
         article_id = str(article_meta.get('article_id', 'unknown'))
-        model_name = self.config.GEMINI_MODEL if self.config.LLM_PROVIDER == "gemini" else self.config.CLS_MODEL
+        if not model_name:
+            model_name = self.config.GEMINI_MODEL if self.config.LLM_PROVIDER == "gemini" else self.config.CLS_MODEL
+            
         return {
             "timestamp": api_timestamp,
             "status": status,
@@ -329,7 +360,8 @@ class BatchAnalyzer:
         api_timestamp: str,
         status: str,
         error_message: Optional[str] = None,
-        error_type: Optional[str] = None
+        error_type: Optional[str] = None,
+        model_name: Optional[str] = None
     ) -> Dict:
         """保存原始API响应"""
         record = self._build_raw_record(
@@ -340,13 +372,16 @@ class BatchAnalyzer:
             api_timestamp,
             status,
             error_message,
-            error_type
+            error_type,
+            model_name
         )
 
         try:
             article_id = record["article_id"]
             safe_article_id = re.sub(r'[^A-Za-z0-9_-]+', '_', article_id)
-            file_name = f"{safe_article_id}_run{run_index}_{api_timestamp}_{status}.json"
+            # Include model name in filename to avoid collisions when running multiple models
+            safe_model = re.sub(r'[^A-Za-z0-9_-]+', '', model_name or "unknown")
+            file_name = f"{safe_article_id}_{safe_model}_run{run_index}_{api_timestamp}_{status}.json"
             file_path = self.config.RAW_OUTPUT_DIR / file_name
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(record, f, ensure_ascii=False, indent=2)
@@ -475,18 +510,24 @@ class BatchAnalyzer:
                 print("  ⚠️ PDF not found; recording error runs")
                 generation_stats['pdf_not_found'] += 1
                 article_meta['pdf_path'] = None
-                for run_idx in range(ai_runs):
-                    err_record = self._build_raw_record(
-                        article_meta,
-                        run_index=run_idx + 1,
-                        prompt=None,
-                        response_text=None,
-                        api_timestamp=self._get_timestamp(),
-                        status="error",
-                        error_message="PDF not found",
-                        error_type="PDF_NOT_FOUND",
-                    )
-                    aggregated_records.append(err_record)
+                
+                # Record errors for all providers
+                providers = self.config.ENABLED_PROVIDERS or [self.config.LLM_PROVIDER]
+                for provider in providers:
+                    model_name = self.config.GEMINI_MODEL if provider == "gemini" else self.config.CLS_MODEL
+                    for run_idx in range(ai_runs):
+                        err_record = self._build_raw_record(
+                            article_meta,
+                            run_index=run_idx + 1,
+                            prompt=None,
+                            response_text=None,
+                            api_timestamp=self._get_timestamp(),
+                            status="error",
+                            error_message="PDF not found",
+                            error_type="PDF_NOT_FOUND",
+                            model_name=model_name
+                        )
+                        aggregated_records.append(err_record)
                 continue
 
             article_meta['pdf_path'] = pdf_path
@@ -497,39 +538,63 @@ class BatchAnalyzer:
             if not article_pages:
                 print("  ⚠️ Failed to read PDF; recording error runs")
                 generation_stats['pdf_read_error'] += 1
-                for run_idx in range(ai_runs):
-                    err_record = self._build_raw_record(
-                        article_meta,
-                        run_index=run_idx + 1,
-                        prompt=None,
-                        response_text=None,
-                        api_timestamp=self._get_timestamp(),
-                        status="error",
-                        error_message="PDF read error",
-                        error_type="PDF_READ_ERROR",
-                    )
-                    aggregated_records.append(err_record)
+                
+                # Record errors for all providers
+                providers = self.config.ENABLED_PROVIDERS or [self.config.LLM_PROVIDER]
+                for provider in providers:
+                    model_name = self.config.GEMINI_MODEL if provider == "gemini" else self.config.CLS_MODEL
+                    for run_idx in range(ai_runs):
+                        err_record = self._build_raw_record(
+                            article_meta,
+                            run_index=run_idx + 1,
+                            prompt=None,
+                            response_text=None,
+                            api_timestamp=self._get_timestamp(),
+                            status="error",
+                            error_message="PDF read error",
+                            error_type="PDF_READ_ERROR",
+                            model_name=model_name
+                        )
+                        aggregated_records.append(err_record)
                 continue
 
             print(f"  📖 PDF loaded: {len(article_pages)} pages")
-            print(f"  🤖 Requesting {ai_runs} raw AI runs...")
+            
+            # Iterate over all enabled providers
+            providers = self.config.ENABLED_PROVIDERS
+            if not providers:
+                # Fallback to legacy single provider
+                providers = [self.config.LLM_PROVIDER]
+                
+            print(f"  🤖 Requesting {ai_runs} raw AI runs for each of {len(providers)} providers: {providers}...")
 
-            for run_idx in range(ai_runs):
-                response, api_timestamp, record = self.analyze_single_article(
-                    article_pages, 
-                    coding_task_pages, 
-                    executive_summary_pages, 
-                    main_body_pages, 
-                    article_meta, 
-                    run_index=run_idx + 1
-                )
-                if record:
-                    aggregated_records.append(record)
+            for provider in providers:
+                client = self.clients.get(provider)
+                if not client:
+                    print(f"  ⚠️ Client for provider '{provider}' not initialized. Skipping.")
+                    continue
+                    
+                model_name = self.config.GEMINI_MODEL if provider == "gemini" else self.config.CLS_MODEL
+                print(f"    👉 Running {provider} ({model_name})...")
 
-                if response:
-                    generation_stats['success'] += 1
-                else:
-                    generation_stats['analysis_error'] += 1
+                for run_idx in range(ai_runs):
+                    response, api_timestamp, record = self.analyze_single_article(
+                        article_pages, 
+                        coding_task_pages, 
+                        executive_summary_pages, 
+                        main_body_pages, 
+                        article_meta, 
+                        run_index=run_idx + 1,
+                        client=client,
+                        model_name=model_name
+                    )
+                    if record:
+                        aggregated_records.append(record)
+
+                    if response:
+                        generation_stats['success'] += 1
+                    else:
+                        generation_stats['analysis_error'] += 1
 
         with open(final_output_path, 'w', encoding='utf-8') as json_file:
             json.dump(aggregated_records, json_file, ensure_ascii=False, indent=2)
@@ -667,10 +732,14 @@ class BatchAnalyzer:
                     for record in run_record_map[run_number]:
                         run_entries.append((run_number, record))
             else:
+                # Include all candidates for each run number (supporting multiple providers)
                 for run_number in range(1, configured_runs + 1):
                     candidates = run_record_map.get(run_number, [])
-                    record = candidates[0] if candidates else None
-                    run_entries.append((run_number, record))
+                    if candidates:
+                        for record in candidates:
+                            run_entries.append((run_number, record))
+                    else:
+                        run_entries.append((run_number, None))
 
             if not run_entries:
                 run_entries = [(run_number, None) for run_number in range(1, configured_runs + 1)]
@@ -686,7 +755,7 @@ class BatchAnalyzer:
                 if not record:
                     print(f"  ⚠️ Missing raw record for run {run_number}; inserting placeholder")
                     placeholder_ts = self._get_timestamp()
-                    ai_row = self._create_ai_row(row, pos_idx, None, placeholder_ts, column_mapping)
+                    ai_row = self._create_ai_row(row, run_number, None, placeholder_ts, column_mapping)
                     ai_row['Analysis_Status'] = f'RAW_MISSING_RUN{run_number}_{placeholder_ts}'
                     ai_rows_for_article.append(ai_row)
                     results.append(ai_row)
@@ -697,20 +766,21 @@ class BatchAnalyzer:
                 error_type = record.get('error_type')
                 raw_text = record.get('raw_response')
                 api_timestamp = record.get('timestamp') or self._get_timestamp()
+                model_name = record.get('model')
 
                 if status == 'success' and raw_text:
                     answers = self.parser.parse_response(raw_text)
                     if answers:
-                        ai_row = self._create_ai_row(row, pos_idx, answers, api_timestamp, column_mapping)
+                        ai_row = self._create_ai_row(row, run_number, answers, api_timestamp, column_mapping, model_name=model_name)
                         ai_answer_sets.append((answers, api_timestamp))
                         ai_success_count += 1
                     else:
                         print(f"  ⚠️ Parse error for run {run_number}")
-                        ai_row = self._create_ai_row(row, pos_idx, None, api_timestamp, column_mapping)
+                        ai_row = self._create_ai_row(row, run_number, None, api_timestamp, column_mapping, model_name=model_name)
                         ai_row['Analysis_Status'] = f'PARSE_ERROR_RUN{run_number}_{api_timestamp}'
                         self.stats['analysis_error'] += 1
                 else:
-                    ai_row = self._create_ai_row(row, pos_idx, None, api_timestamp, column_mapping)
+                    ai_row = self._create_ai_row(row, run_number, None, api_timestamp, column_mapping, model_name=model_name)
                     label = error_type or status or 'ANALYSIS_ERROR'
                     ai_row['Analysis_Status'] = f'{label.upper()}_RUN{run_number}_{api_timestamp}'
 
@@ -733,14 +803,14 @@ class BatchAnalyzer:
                     ai_answer_sets, column_mapping
                 )
 
-            ai_agreement_label = self._summarize_q15_agreement(vote_details, ai_success_count)
+            ai_agreement_label = self._summarize_classification_agreement(vote_details, ai_success_count)
             if ai_agreement_label:
                 human_row[self.AI_AGREEMENT_COL] = ai_agreement_label
                 for ai_row in ai_rows_for_article:
                     ai_row[self.AI_AGREEMENT_COL] = ai_agreement_label
 
-            q15_tie = self._is_q15_tie(vote_details)
-            vote_counts_text = self._format_q15_vote_counts(vote_details, is_tie=q15_tie)
+            is_classification_tie = self._is_classification_tie(vote_details)
+            vote_counts_text = self._format_classification_vote_counts(vote_details, is_tie=is_classification_tie)
             success_rate_value: Optional[float]
             if actual_run_count:
                 success_rate_value = round(ai_success_count / actual_run_count, 3)
@@ -752,16 +822,16 @@ class BatchAnalyzer:
             human_row[self.AI_SUCCESS_RATE_COL] = success_rate_value
             human_row[self.Q15_VOTE_COUNTS_COL] = vote_counts_text
 
-            # 多数票
-            if q15_tie:
-                human_row[self.HUMAN_VS_AI_COL] = 'Tie (no AI majority)'
-            elif (self.config.ENABLE_MAJORITY_VOTE and
+            # 多数票逻辑 (Modified to always generate row even on tie)
+            if (self.config.ENABLE_MAJORITY_VOTE and
                 actual_run_count > 1 and
                 ai_success_count >= 2):
+                
                 vote_output = self._create_majority_vote_row(
                     row, ai_answer_sets, column_mapping,
                     majority_results, vote_details, numeric_stats
                 )
+                
                 if vote_output:
                     majority_row, majority_metadata = vote_output
                     majority_row[self.AI_AGREEMENT_COL] = ai_agreement_label
@@ -771,15 +841,24 @@ class BatchAnalyzer:
                     majority_row[self.Q15_VOTE_COUNTS_COL] = vote_counts_text
                     results.append(majority_row)
 
-                    human_value = human_row.get(q_human_col, '') if q_human_col else ''
-                    ai_value = majority_row.get(q_ai_col, '') if q_ai_col else ''
-                    human_vs_ai = self._compare_human_vs_ai_q15(human_value, ai_value)
-                    human_row[self.HUMAN_VS_AI_COL] = human_vs_ai
-                    majority_row[self.HUMAN_VS_AI_COL] = human_vs_ai
+                    # Handle Human vs AI comparison
+                    if is_classification_tie:
+                        tie_msg = 'Tie (no AI majority)'
+                        human_row[self.HUMAN_VS_AI_COL] = tie_msg
+                        majority_row[self.HUMAN_VS_AI_COL] = tie_msg
+                    else:
+                        human_value = human_row.get(q_human_col, '') if q_human_col else ''
+                        ai_value = majority_row.get(q_ai_col, '') if q_ai_col else ''
+                        human_vs_ai = self._compare_human_vs_ai_classification(human_value, ai_value)
+                        human_row[self.HUMAN_VS_AI_COL] = human_vs_ai
+                        majority_row[self.HUMAN_VS_AI_COL] = human_vs_ai
                 else:
                     human_row[self.HUMAN_VS_AI_COL] = 'No AI majority'
             else:
-                if not self.config.ENABLE_MAJORITY_VOTE:
+                # Fallback logic for insufficient runs or disabled voting
+                if is_classification_tie:
+                     human_row[self.HUMAN_VS_AI_COL] = 'Tie (no AI majority)'
+                elif not self.config.ENABLE_MAJORITY_VOTE:
                     human_row[self.HUMAN_VS_AI_COL] = 'Majority vote disabled'
                 elif actual_run_count <= 1:
                     human_row[self.HUMAN_VS_AI_COL] = 'Majority vote not applicable (single run)'
@@ -889,14 +968,32 @@ class BatchAnalyzer:
     def _create_ai_row(
         self,
         row: pd.Series,
-        run_idx: int,
+        run_number: int,
         ai_answers: Optional[Dict],
         api_timestamp: str,
-        column_mapping: Dict[int, str]
+        column_mapping: Dict[int, str],
+        model_name: Optional[str] = None
     ) -> Dict:
         """创建AI结果行"""
         ai_row = row.to_dict()
-        run_source_id = self._get_run_source_id(run_idx)
+        
+        if model_name:
+            # Use specific model name if available
+            # Reconstruct source ID format: model-temp-reasoning-verbosity-runX
+            reasoning = self.config.get_reasoning_effort()
+            verbosity = self.config.get_text_verbosity()
+            base_source = f"{model_name}-temp{self.config.TEMPERATURE}-reasoning_{reasoning}-verbosity_{verbosity}"
+            run_source_id = f"{base_source}-run{run_number}"
+        else:
+            # Fallback to default logic (using pos_idx as run_number-1)
+            # Note: run_number passed here might be actual run number or pos_idx depending on caller
+            # If it's pos_idx (0-based), we add 1. If it's run_number (1-based), we use it as is?
+            # The original code passed pos_idx (0-based) and _get_run_source_id added 1.
+            # To maintain compatibility if model_name is missing, we assume run_number is 0-based index here
+            # But we are changing the caller to pass actual run_number (1-based).
+            # So we should adjust.
+            run_source_id = self._get_run_source_id(run_number - 1)
+
         ai_row['source'] = run_source_id
 
         if ai_answers is None:
@@ -935,7 +1032,16 @@ class BatchAnalyzer:
             return None
 
         majority_row = row.to_dict()
-        majority_source_id = f"{self.config.get_source_id()}-majority-vote"
+        
+        # Determine source ID for majority vote row
+        providers = self.config.ENABLED_PROVIDERS
+        if len(providers) > 1:
+            # If multiple providers, use a generic ensemble name
+            majority_source_id = f"ensemble-majority-vote"
+        else:
+            # If single provider, keep model info but ensure it's clear
+            majority_source_id = f"{self.config.get_source_id()}-majority-vote"
+            
         majority_row['source'] = majority_source_id
         majority_row['Analysis_Status'] = f'MAJORITY_VOTE_{self._get_timestamp()}'
 
@@ -983,24 +1089,24 @@ class BatchAnalyzer:
         }
         return majority_row, metadata
 
-    def _summarize_q15_agreement(
+    def _summarize_classification_agreement(
         self,
         vote_details: Dict[int, Dict],
         total_runs: int
     ) -> str:
-        """汇总Q15的AI一致性情况"""
+        """汇总分类问题(Q16)的AI一致性情况"""
         detail = vote_details.get(self.config.Q_ID_CLASSIFICATION)
         if detail is None or not detail.get('vote_counts'):
             if total_runs <= 1:
                 return 'Insufficient data'
-            return 'No Q15 data'
+            return 'No Classification data'
 
         counts = detail['vote_counts']
         sorted_counts = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
         top_answer, top_count = sorted_counts[0]
         total_votes = sum(counts.values())
         if total_votes == 0:
-            return 'No Q15 data'
+            return 'No Classification data'
 
         tie_count = sum(1 for _, cnt in counts.items() if cnt == top_count)
         if tie_count > 1:
@@ -1020,13 +1126,13 @@ class BatchAnalyzer:
         detail_text = ", ".join(f"{ans}:{cnt}" for ans, cnt in sorted_counts)
         return f"{label} ({detail_text})"
 
-    def _format_q15_vote_counts(
+    def _format_classification_vote_counts(
         self,
         vote_details: Dict[int, Dict],
         *,
         is_tie: bool = False
     ) -> str:
-        """格式化Q15投票计数字符串"""
+        """格式化分类问题(Q16)投票计数字符串"""
         detail = vote_details.get(self.config.Q_ID_CLASSIFICATION) if vote_details else None
         if not detail:
             return ''
@@ -1039,8 +1145,8 @@ class BatchAnalyzer:
             return f"Tie ({counts_text})"
         return counts_text
 
-    def _compare_human_vs_ai_q15(self, human_value: str, ai_value: str) -> str:
-        """比较人类与多数投票在Q15上的一致性"""
+    def _compare_human_vs_ai_classification(self, human_value: str, ai_value: str) -> str:
+        """比较人类与多数投票在分类问题(Q16)上的一致性"""
         human_value = human_value or ''
         ai_value = ai_value or ''
 
@@ -1064,8 +1170,8 @@ class BatchAnalyzer:
 
         return f"Mismatch (Human={normalized_human}, AI={normalized_ai})"
 
-    def _is_q15_tie(self, vote_details: Dict[int, Dict]) -> bool:
-        """判断Q15是否出现平票"""
+    def _is_classification_tie(self, vote_details: Dict[int, Dict]) -> bool:
+        """判断分类问题(Q16)是否出现平票"""
         if not vote_details:
             return False
         detail = vote_details.get(self.config.Q_ID_CLASSIFICATION)

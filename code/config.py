@@ -33,7 +33,7 @@ class Config:
     # ==================== OpenAI配置 ====================
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     CLS_MODEL = "gpt-5-2025-08-07"
-    # CLS_MODEL = "o3"
+    # CLS_MODEL = "gpt-5.1"
     TEMPERATURE = 0.1  # 0.0为完全确定性，0.1为轻微随机性
 
     # OpenAI API高级参数（适用于支持的模型）
@@ -47,7 +47,11 @@ class Config:
     # ==================== LLM Provider配置 ====================
     # 可选值: "openai", "gemini"
     # LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()
-    LLM_PROVIDER = "openai"
+    LLM_PROVIDER = "openai"  # Primary provider (kept for backward compatibility)
+    
+    # List of providers to run simultaneously
+    # Options: "openai", "gemini"
+    ENABLED_PROVIDERS = ["openai", "gemini"]
     
 
     # ==================== 批处理参数 ====================
@@ -210,19 +214,29 @@ class Config:
         Returns:
             bool: 配置是否有效
         """
-        if cls.LLM_PROVIDER == "openai":
+        # Validate all enabled providers
+        if "openai" in cls.ENABLED_PROVIDERS:
             if not cls.OPENAI_API_KEY:
                 print("Error: OPENAI_API_KEY not found in environment")
                 print("Please set it in .env file")
                 return False
-        elif cls.LLM_PROVIDER == "gemini":
+        
+        if "gemini" in cls.ENABLED_PROVIDERS:
             if not cls.GEMINI_API_KEY:
                 print("Error: GEMINI_API_KEY not found in environment")
                 print("Please set it in .env file")
                 return False
-        else:
-            print(f"Error: Unsupported LLM_PROVIDER: {cls.LLM_PROVIDER}")
-            return False
+
+        # Legacy validation for single provider if ENABLED_PROVIDERS is not used/empty (fallback)
+        if not cls.ENABLED_PROVIDERS:
+            if cls.LLM_PROVIDER == "openai":
+                if not cls.OPENAI_API_KEY:
+                    print("Error: OPENAI_API_KEY not found in environment")
+                    return False
+            elif cls.LLM_PROVIDER == "gemini":
+                if not cls.GEMINI_API_KEY:
+                    print("Error: GEMINI_API_KEY not found in environment")
+                    return False
 
         if not cls.CODINGTASK_MD.exists():
             print(f"Error: Coding Task not found at {cls.CODINGTASK_MD}")
@@ -260,12 +274,16 @@ class Config:
         print(f"PDF Folder: {cls.PDF_FOLDER}")
         print(f"Results Dir: {cls.RESULTS_DIR}")
         print(f"LLM Provider: {cls.LLM_PROVIDER}")
-        if cls.LLM_PROVIDER == "openai":
-            print(f"Model: {cls.CLS_MODEL}")
-            print(f"API Key: {'✓ Set' if cls.OPENAI_API_KEY else '✗ Missing'}")
-        elif cls.LLM_PROVIDER == "gemini":
-            print(f"Model: {cls.GEMINI_MODEL}")
-            print(f"API Key: {'✓ Set' if cls.GEMINI_API_KEY else '✗ Missing'}")
+        print(f"Enabled Providers: {cls.ENABLED_PROVIDERS}")
+        
+        if "openai" in cls.ENABLED_PROVIDERS:
+            print(f"OpenAI Model: {cls.CLS_MODEL}")
+            print(f"OpenAI Key: {'✓ Set' if cls.OPENAI_API_KEY else '✗ Missing'}")
+            
+        if "gemini" in cls.ENABLED_PROVIDERS:
+            print(f"Gemini Model: {cls.GEMINI_MODEL}")
+            print(f"Gemini Key: {'✓ Set' if cls.GEMINI_API_KEY else '✗ Missing'}")
+            
         print(f"Temperature: {cls.TEMPERATURE}")
         print(f"AI Runs: {cls.get_ai_runs()}")
         print(f"Reasoning Effort: {cls.get_reasoning_effort()}")
