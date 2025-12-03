@@ -1,9 +1,24 @@
 """
 批量分析流水线主程序 - 4PT框架批量文章分析
 """
+import os
+import logging
 import argparse
 from datetime import datetime
 from pathlib import Path
+
+# 抑制 gRPC/absl 的早期噪声日志（无需手动 export 环境变量）
+os.environ.setdefault("GRPC_VERBOSITY", "ERROR")
+os.environ.setdefault("GRPC_PYTHON_LOG_LEVEL", "ERROR")
+os.environ.setdefault("GRPC_PYTHON_FORK_SUPPORT", "0")
+try:
+    from absl import logging as absl_logging
+    absl_logging.set_verbosity(absl_logging.ERROR)
+    absl_logging.use_python_logging()
+except Exception:
+    pass
+logging.getLogger("grpc").setLevel(logging.ERROR)
+
 from config import Config
 from batch_analyzer import BatchAnalyzer
 

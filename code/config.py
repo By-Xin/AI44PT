@@ -59,6 +59,19 @@ class Config:
     DEFAULT_AI_RUNS = 3  # 每篇文章的独立AI运行次数
     ENABLE_SHUFFLE = False  # 是否启用问题随机排序
 
+    # ==================== 并发/输出配置 ====================
+    # 是否启用多线程并发调用（禁用时退回串行执行）
+    ENABLE_CONCURRENT_CALLS = True
+    # 同时在飞的文章数（0 或 None 表示不限制文章层）
+    MAX_PARALLEL_ARTICLES = 4
+    # 全局在飞的 API 调用上限（0 或 None 表示不限制）
+    MAX_TOTAL_CONCURRENT_CALLS = 8
+    # 各 provider 单独的并发上限（0 或 None 表示不限制）
+    MAX_CONCURRENT_OPENAI = 4
+    MAX_CONCURRENT_GEMINI = 4
+    # JSONL 追加写入时，每条都刷盘（确保崩溃损失最小，代价是更多 IO）
+    JSONL_FLUSH_EACH_WRITE = True
+
     # ==================== Majority Vote配置 ====================
     ENABLE_MAJORITY_VOTE = True
     # Q15 is new Uncertainty Check (Objective)

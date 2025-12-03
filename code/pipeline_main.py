@@ -2,6 +2,9 @@
 批量分析流水线主程序 - 4PT框架批量文章分析
 """
 import argparse
+import builtins
+import logging
+import sys
 from datetime import datetime
 from pathlib import Path
 from config import Config
@@ -46,8 +49,44 @@ def parse_cli_args():
     return parser.parse_args()
 
 
+def _setup_logging():
+    """Configure root logger to emit clean CLI-friendly lines to stdout."""
+    logger = logging.getLogger()
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)-7s | %(message)s"))
+        logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    return logging.getLogger(__name__)
+
+
+def _redirect_print_to_logger(logger: logging.Logger):
+    """Route built-in print through logging for consistent formatting."""
+    def _print(*args, sep=" ", end="\n", file=None, flush=False):
+        # Respect separator and end (except we rely on logger newline handling)
+        msg = sep.join(str(a) for a in args)
+        if end and end != "\n":
+            msg = f"{msg}{end}"
+        lvl = logging.INFO
+        if msg.lstrip().startswith(("⚠", "Warning", "warning")):
+            lvl = logging.WARNING
+        elif msg.lstrip().startswith(("❌", "Error", "error")):
+            lvl = logging.ERROR
+        logger.log(lvl, msg)
+        if flush:
+            for h in logging.getLogger().handlers:
+                try:
+                    h.flush()
+                except Exception:
+                    pass
+    builtins.print = _print
+
+
 def main():
     """批量分析主入口"""
+    logger = _setup_logging()
+    _redirect_print_to_logger(logger)
+
     args = parse_cli_args()
     stage = args.stage
     excel_override = Path(args.excel_path).expanduser() if args.excel_path else None

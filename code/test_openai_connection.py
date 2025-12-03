@@ -62,5 +62,22 @@ def test_openai():
     except Exception as e:
         print(f"\n❌ Error during generation: {e}")
 
+    # response = client.chat.completions.with_raw_response.create(
+    #     model=config.CLS_MODEL,
+    #     messages=[
+    #         {"role": "system", "content": system_prompt},
+    #         {"role": "user", "content": user_prompt}
+    #     ],
+    #     temperature=0.1,
+    #     reasoning_effort="low",
+    #     text_verbosity="low",
+    #     max_tokens=20
+    # )
+
+    print("Rate Limit Info:")
+    print(f"  Requests limit: {response.headers.get('x-ratelimit-limit-requests')}")
+    print(f"  Tokens limit: {response.headers.get('x-ratelimit-limit-tokens')}")
+    print(f"  Remaining requests: {response.headers.get('x-ratelimit-remaining-requests')}")
+
 if __name__ == "__main__":
     test_openai()

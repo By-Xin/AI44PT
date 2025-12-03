@@ -4,7 +4,10 @@
 import os
 import json
 import re
+import threading
+import logging
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
@@ -50,11 +53,13 @@ class BatchAnalyzer:
         Args:
             config: 批处理配置对象
         """
+        self.logger = logging.getLogger(__name__)
         self.config = config or Config()
         self.config.setup_directories()
 
         # 初始化组件
         self.clients = {}
+        available_providers = []
         
         # Initialize all enabled clients
         if "openai" in self.config.ENABLED_PROVIDERS:
@@ -62,28 +67,44 @@ class BatchAnalyzer:
                 api_key=self.config.OPENAI_API_KEY,
                 model=self.config.CLS_MODEL
             )
+            available_providers.append("openai")
             
         if "gemini" in self.config.ENABLED_PROVIDERS:
-            self.clients["gemini"] = GeminiClient(
-                api_key=self.config.GEMINI_API_KEY,
-                model=self.config.GEMINI_MODEL
-            )
-            
-        # Fallback/Legacy support if clients dict is empty but LLM_PROVIDER is set
-        if not self.clients:
-            if self.config.LLM_PROVIDER == "gemini":
+            try:
                 self.clients["gemini"] = GeminiClient(
                     api_key=self.config.GEMINI_API_KEY,
                     model=self.config.GEMINI_MODEL
                 )
+                available_providers.append("gemini")
+            except ImportError as exc:
+                self.logger.warning(
+                    "Gemini provider disabled (dependency missing): %s. "
+                    "Install google-generativeai or remove 'gemini' from ENABLED_PROVIDERS.",
+                    exc
+                )
+            
+        # Fallback/Legacy support if clients dict is empty but LLM_PROVIDER is set
+        if not self.clients:
+            if self.config.LLM_PROVIDER == "gemini":
+                try:
+                    self.clients["gemini"] = GeminiClient(
+                        api_key=self.config.GEMINI_API_KEY,
+                        model=self.config.GEMINI_MODEL
+                    )
+                    available_providers.append("gemini")
+                except ImportError as exc:
+                    self.logger.error("Gemini not available and no other provider configured: %s", exc)
+                    raise
             else:
                 self.clients["openai"] = OpenAIClient(
                     api_key=self.config.OPENAI_API_KEY,
                     model=self.config.CLS_MODEL
                 )
+                available_providers.append("openai")
             
         # Set default client for legacy calls (optional)
         self.client = self.clients.get(self.config.LLM_PROVIDER) or list(self.clients.values())[0]
+        self.available_providers = available_providers
             
         self.document_reader = DocumentReader()
         self.parser = ResponseParser(self.config)
@@ -109,7 +130,8 @@ class BatchAnalyzer:
         article_meta: Dict,
         run_index: int,
         client=None,
-        model_name: str = None
+        model_name: str = None,
+        provider: Optional[str] = None
     ) -> Tuple[Optional[Dict], str]:
         """
         分析单篇文章（单次运行）
@@ -122,7 +144,8 @@ class BatchAnalyzer:
             article_meta: 文章元数据
             run_index: 运行索引
             client: LLM客户端实例 (optional, defaults to self.client)
-            model_name: 模型名称 (optional)
+        model_name: 模型名称 (optional)
+        provider: 提供商名称 (optional)
 
         Returns:
             (answers_dict, timestamp) 元组
@@ -176,7 +199,7 @@ class BatchAnalyzer:
         record = self._save_raw_response(
             article_meta, run_index, full_prompt_for_record, analysis_text,
             api_timestamp, status, error_message, error_type=error_type,
-            model_name=current_model
+            model_name=current_model, provider=provider
         )
 
         if analysis_text:
@@ -322,7 +345,8 @@ class BatchAnalyzer:
         status: str,
         error_message: Optional[str] = None,
         error_type: Optional[str] = None,
-        model_name: Optional[str] = None
+        model_name: Optional[str] = None,
+        provider: Optional[str] = None
     ) -> Dict:
         """构建原始响应记录"""
         article_id = str(article_meta.get('article_id', 'unknown'))
@@ -340,6 +364,7 @@ class BatchAnalyzer:
             "excel_row_total": article_meta.get('total'),
             "pdf_path": article_meta.get('pdf_path'),
             "run_index": run_index,
+            "provider": provider,
             "ai_runs": article_meta.get('ai_runs'),
             "debug_mode": self.config.DEBUG_MODE,
             "model": model_name,
@@ -361,7 +386,8 @@ class BatchAnalyzer:
         status: str,
         error_message: Optional[str] = None,
         error_type: Optional[str] = None,
-        model_name: Optional[str] = None
+        model_name: Optional[str] = None,
+        provider: Optional[str] = None
     ) -> Dict:
         """保存原始API响应"""
         record = self._build_raw_record(
@@ -373,7 +399,8 @@ class BatchAnalyzer:
             status,
             error_message,
             error_type,
-            model_name
+            model_name,
+            provider
         )
 
         try:
@@ -381,7 +408,8 @@ class BatchAnalyzer:
             safe_article_id = re.sub(r'[^A-Za-z0-9_-]+', '_', article_id)
             # Include model name in filename to avoid collisions when running multiple models
             safe_model = re.sub(r'[^A-Za-z0-9_-]+', '', model_name or "unknown")
-            file_name = f"{safe_article_id}_{safe_model}_run{run_index}_{api_timestamp}_{status}.json"
+            safe_provider = re.sub(r'[^A-Za-z0-9_-]+', '', provider or "provider")
+            file_name = f"{safe_article_id}_{safe_provider}_{safe_model}_run{run_index}_{api_timestamp}_{status}.json"
             file_path = self.config.RAW_OUTPUT_DIR / file_name
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(record, f, ensure_ascii=False, indent=2)
@@ -412,21 +440,44 @@ class BatchAnalyzer:
             except json.JSONDecodeError as exc:
                 print(f"  ⚠️ Skipping malformed JSON file {path.name}: {exc}")
 
+        def load_jsonl_file(path: Path):
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    for line_num, line in enumerate(f, start=1):
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            obj = json.loads(line)
+                            if isinstance(obj, dict):
+                                records.append(obj)
+                            else:
+                                print(f"  ⚠️ Skipping non-dict entry in {path.name} line {line_num}")
+                        except json.JSONDecodeError as exc:
+                            print(f"  ⚠️ Skipping malformed JSONL line {line_num} in {path.name}: {exc}")
+            except FileNotFoundError:
+                print(f"❌ Raw JSONL file not found: {path}")
+
         if source_path.is_dir():
             json_files = sorted(source_path.glob("*.json"))
+            jsonl_files = sorted(source_path.glob("*.jsonl"))
 
             if json_files:
                 for json_file in json_files:
                     load_json_file(json_file)
-
-            if not json_files:
-                print(f"❌ No JSON files found in directory: {source_path}")
+            elif jsonl_files:
+                for jsonl_file in jsonl_files:
+                    load_jsonl_file(jsonl_file)
+            else:
+                print(f"❌ No JSON/JSONL files found in directory: {source_path}")
 
             return records
 
         suffix = source_path.suffix.lower()
         if suffix == ".json":
             load_json_file(source_path)
+        elif suffix == ".jsonl":
+            load_jsonl_file(source_path)
         else:
             print(f"❌ Unsupported raw data format: {source_path}")
         return records
@@ -436,7 +487,7 @@ class BatchAnalyzer:
         excel_path: str = None,
         output_path: Optional[str] = None
     ) -> Path:
-        """生成原始响应并保存为JSON数组"""
+        """生成原始响应并保存为JSON数组（并发 + JSONL流式写入）"""
         excel_path = excel_path or str(self.config.EXCEL_PATH)
         print(f"\n📥 Loading Excel for raw generation: {excel_path}")
         df_human = pd.read_excel(excel_path)
@@ -468,8 +519,11 @@ class BatchAnalyzer:
         run_dir = base_dir / run_dir_name
         run_dir.mkdir(parents=True, exist_ok=True)
         final_output_path = run_dir / final_filename
+        streaming_output_path = final_output_path.with_suffix(".jsonl")
 
-        print(f"\n📝 Writing aggregated raw responses to JSON: {final_output_path}")
+        print(f"\n📝 Aggregated raw (array) will be written to: {final_output_path}")
+        print(f"🧮 Streaming JSONL (append per call) will be written to: {streaming_output_path}")
+        streaming_output_path.write_text("", encoding="utf-8")
 
         # 预加载Codebook
         coding_task_pages = self.document_reader.read_markdown(str(self.config.CODINGTASK_MD))
@@ -485,16 +539,134 @@ class BatchAnalyzer:
         ai_runs = self.config.get_ai_runs()
 
         aggregated_records: List[Dict] = []
+        records_lock = threading.Lock()
+        stats_lock = threading.Lock()
+        jsonl_lock = threading.Lock()
+        article_lock = threading.Lock()
+
+        concurrency_enabled = bool(self.config.ENABLE_CONCURRENT_CALLS)
+
+        # 并发控制
+        article_semaphore = threading.Semaphore(self.config.MAX_PARALLEL_ARTICLES) if concurrency_enabled and self.config.MAX_PARALLEL_ARTICLES else None
+        global_semaphore = threading.Semaphore(self.config.MAX_TOTAL_CONCURRENT_CALLS) if concurrency_enabled and self.config.MAX_TOTAL_CONCURRENT_CALLS else None
+        provider_semaphores = {
+            "openai": threading.Semaphore(self.config.MAX_CONCURRENT_OPENAI) if concurrency_enabled and self.config.MAX_CONCURRENT_OPENAI else None,
+            "gemini": threading.Semaphore(self.config.MAX_CONCURRENT_GEMINI) if concurrency_enabled and self.config.MAX_CONCURRENT_GEMINI else None,
+        }
+
+        # 每篇文章在飞的任务计数，用于释放 article_semaphore
+        article_pending_tasks: Dict[str, int] = defaultdict(int)
+
+        def append_record(record: Dict):
+            with records_lock:
+                aggregated_records.append(record)
+            with jsonl_lock:
+                with open(streaming_output_path, "a", encoding="utf-8") as jf:
+                    jf.write(json.dumps(record, ensure_ascii=False))
+                    jf.write("\n")
+                    if self.config.JSONL_FLUSH_EACH_WRITE:
+                        jf.flush()
+                        try:
+                            os.fsync(jf.fileno())
+                        except OSError:
+                            pass
+
+        def update_stats_from_record(record: Dict):
+            status = record.get("status")
+            error_type = record.get("error_type")
+            with stats_lock:
+                if status == "success" and record.get("raw_response"):
+                    generation_stats["success"] += 1
+                elif error_type in {"PDF_NOT_FOUND", "PDF_READ_ERROR"}:
+                    # 这些错误在文章层面已经计数，避免重复累计
+                    pass
+                else:
+                    generation_stats["analysis_error"] += 1
+
+        def execute_single_call(
+            article_pages: List[Dict],
+            coding_pages: List[Dict],
+            exec_pages: List[Dict],
+            main_pages: List[Dict],
+            article_meta: Dict,
+            run_idx: int,
+            provider: str,
+            client,
+            model_name: str
+        ) -> Dict:
+            provider_sem = provider_semaphores.get(provider)
+            acquired_global = False
+            acquired_provider = False
+
+            try:
+                if global_semaphore:
+                    global_semaphore.acquire()
+                    acquired_global = True
+                if provider_sem:
+                    provider_sem.acquire()
+                    acquired_provider = True
+
+                response, api_timestamp, record = self.analyze_single_article(
+                    article_pages,
+                    coding_pages,
+                    exec_pages,
+                    main_pages,
+                    article_meta,
+                    run_index=run_idx,
+                    client=client,
+                    model_name=model_name,
+                    provider=provider
+                )
+                return record
+            except Exception as exc:
+                ts = self._get_timestamp()
+                err_record = self._save_raw_response(
+                    article_meta,
+                    run_idx,
+                    prompt=None,
+                    response_text=None,
+                    api_timestamp=ts,
+                    status="error",
+                    error_message=str(exc),
+                    error_type="api_error",
+                    model_name=model_name,
+                    provider=provider
+                )
+                return err_record
+            finally:
+                if acquired_provider:
+                    provider_sem.release()
+                if acquired_global:
+                    global_semaphore.release()
 
         rows_iter = df_human.iterrows()
-        if tqdm:
+        # 并发模式下 tqdm 输出会混乱，这里禁用；串行模式继续使用 tqdm
+        if not concurrency_enabled and tqdm:
             rows_iter = tqdm(rows_iter, total=article_count, desc="Raw generation", unit="article")
+
+        futures = []
+        future_to_article: Dict = {}
+        future_to_provider: Dict = {}
+        total_tasks = 0
+
+        default_workers = max(4, (os.cpu_count() or 2) * 2)
+        if concurrency_enabled:
+            max_workers = self.config.MAX_TOTAL_CONCURRENT_CALLS or default_workers
+        else:
+            max_workers = 1
+            # 禁用并发时确保信号量不生效
+            global_semaphore = threading.Semaphore(1)
+            provider_semaphores = {"openai": threading.Semaphore(1), "gemini": threading.Semaphore(1)}
+        executor = ThreadPoolExecutor(max_workers=max_workers)
 
         for seq_idx, (df_index, row) in enumerate(rows_iter, start=1):
             article_id = row['#']
             title = row.get('Title of the Paper', 'Unknown')
 
-            print(f"\n[{seq_idx}/{article_count}] Generating raw for article #{article_id}: {title[:50]}...")
+            if article_semaphore:
+                article_semaphore.acquire()
+
+            print(f"\n[{seq_idx}/{article_count}] Scheduling raw generation for article #{article_id}: {title[:50]}...")
 
             article_meta = {
                 "article_id": article_id,
@@ -511,7 +683,6 @@ class BatchAnalyzer:
                 generation_stats['pdf_not_found'] += 1
                 article_meta['pdf_path'] = None
                 
-                # Record errors for all providers
                 providers = self.config.ENABLED_PROVIDERS or [self.config.LLM_PROVIDER]
                 for provider in providers:
                     model_name = self.config.GEMINI_MODEL if provider == "gemini" else self.config.CLS_MODEL
@@ -525,9 +696,13 @@ class BatchAnalyzer:
                             status="error",
                             error_message="PDF not found",
                             error_type="PDF_NOT_FOUND",
-                            model_name=model_name
+                            model_name=model_name,
+                            provider=provider
                         )
-                        aggregated_records.append(err_record)
+                        append_record(err_record)
+                        update_stats_from_record(err_record)
+                if article_semaphore:
+                    article_semaphore.release()
                 continue
 
             article_meta['pdf_path'] = pdf_path
@@ -539,7 +714,6 @@ class BatchAnalyzer:
                 print("  ⚠️ Failed to read PDF; recording error runs")
                 generation_stats['pdf_read_error'] += 1
                 
-                # Record errors for all providers
                 providers = self.config.ENABLED_PROVIDERS or [self.config.LLM_PROVIDER]
                 for provider in providers:
                     model_name = self.config.GEMINI_MODEL if provider == "gemini" else self.config.CLS_MODEL
@@ -553,20 +727,22 @@ class BatchAnalyzer:
                             status="error",
                             error_message="PDF read error",
                             error_type="PDF_READ_ERROR",
-                            model_name=model_name
+                            model_name=model_name,
+                            provider=provider
                         )
-                        aggregated_records.append(err_record)
+                        append_record(err_record)
+                        update_stats_from_record(err_record)
+                if article_semaphore:
+                    article_semaphore.release()
                 continue
 
             print(f"  📖 PDF loaded: {len(article_pages)} pages")
             
-            # Iterate over all enabled providers
-            providers = self.config.ENABLED_PROVIDERS
+            providers = self.available_providers or self.config.ENABLED_PROVIDERS
             if not providers:
-                # Fallback to legacy single provider
                 providers = [self.config.LLM_PROVIDER]
                 
-            print(f"  🤖 Requesting {ai_runs} raw AI runs for each of {len(providers)} providers: {providers}...")
+            print(f"  🤖 Scheduling {ai_runs} run(s) for each of {len(providers)} providers: {providers}...")
 
             for provider in providers:
                 client = self.clients.get(provider)
@@ -575,26 +751,94 @@ class BatchAnalyzer:
                     continue
                     
                 model_name = self.config.GEMINI_MODEL if provider == "gemini" else self.config.CLS_MODEL
-                print(f"    👉 Running {provider} ({model_name})...")
-
                 for run_idx in range(ai_runs):
-                    response, api_timestamp, record = self.analyze_single_article(
-                        article_pages, 
-                        coding_task_pages, 
-                        executive_summary_pages, 
-                        main_body_pages, 
-                        article_meta, 
-                        run_index=run_idx + 1,
-                        client=client,
-                        model_name=model_name
+                    meta_copy = dict(article_meta)
+                    meta_copy["provider"] = provider
+                    with article_lock:
+                        article_pending_tasks[str(article_id)] += 1
+                    future = executor.submit(
+                        execute_single_call,
+                        article_pages,
+                        coding_task_pages,
+                        executive_summary_pages,
+                        main_body_pages,
+                        meta_copy,
+                        run_idx + 1,
+                        provider,
+                        client,
+                        model_name
                     )
-                    if record:
-                        aggregated_records.append(record)
+                    futures.append(future)
+                    future_to_article[future] = str(article_id)
+                    future_to_provider[future] = provider
+                    total_tasks += 1
 
-                    if response:
-                        generation_stats['success'] += 1
-                    else:
-                        generation_stats['analysis_error'] += 1
+            # 如果没有任何任务被提交，需要释放文章并发槽位
+            with article_lock:
+                pending = article_pending_tasks.get(str(article_id), 0)
+            if pending == 0 and article_semaphore:
+                article_semaphore.release()
+
+        done_calls = 0
+        for future in as_completed(futures):
+            record = None
+            try:
+                record = future.result()
+            except Exception as exc:
+                article_id = future_to_article.get(future, "unknown")
+                provider = future_to_provider.get(future, "unknown")
+                ts = self._get_timestamp()
+                article_meta = {
+                    "article_id": article_id,
+                    "title": "",
+                    "index": None,
+                    "total": article_count,
+                    "pdf_path": None,
+                    "ai_runs": ai_runs,
+                    "provider": provider,
+                }
+                record = self._build_raw_record(
+                    article_meta,
+                    run_index=1,
+                    prompt=None,
+                    response_text=None,
+                    api_timestamp=ts,
+                    status="error",
+                    error_message=str(exc),
+                    error_type="api_error",
+                    model_name=self.config.CLS_MODEL if provider == "openai" else self.config.GEMINI_MODEL,
+                    provider=provider
+                )
+
+            append_record(record)
+            update_stats_from_record(record)
+            done_calls += 1
+
+            article_id = future_to_article.get(future)
+            if article_id is not None:
+                with article_lock:
+                    article_pending_tasks[article_id] -= 1
+                    if article_pending_tasks[article_id] <= 0:
+                        article_pending_tasks.pop(article_id, None)
+                        if article_semaphore:
+                            article_semaphore.release()
+                        print(f"  ✅ Completed article #{article_id}")
+
+            if total_tasks:
+                progress_step = max(1, total_tasks // 10)
+                if done_calls % progress_step == 0 or done_calls == total_tasks:
+                    with stats_lock:
+                        s_success = generation_stats.get('success', 0)
+                        s_err = generation_stats.get('analysis_error', 0)
+                        s_pdf_missing = generation_stats.get('pdf_not_found', 0)
+                        s_pdf_err = generation_stats.get('pdf_error', 0)
+                    print(
+                        f"  ↪️ Progress: {done_calls}/{total_tasks} calls | "
+                        f"success {s_success}, errors {s_err}, "
+                        f"pdf_missing {s_pdf_missing}, pdf_read_err {s_pdf_err}"
+                    )
+
+        executor.shutdown(wait=True)
 
         with open(final_output_path, 'w', encoding='utf-8') as json_file:
             json.dump(aggregated_records, json_file, ensure_ascii=False, indent=2)
@@ -604,6 +848,7 @@ class BatchAnalyzer:
         print(f"  ⚠️ API/analysis errors: {generation_stats['analysis_error']}")
         print(f"  ⚠️ PDF not found: {generation_stats['pdf_not_found']}")
         print(f"  ⚠️ PDF read errors: {generation_stats['pdf_read_error']}")
+        print(f"  📄 Streaming JSONL: {streaming_output_path}")
 
         self.last_raw_source_path = final_output_path
         return final_output_path
@@ -755,7 +1000,7 @@ class BatchAnalyzer:
                 if not record:
                     print(f"  ⚠️ Missing raw record for run {run_number}; inserting placeholder")
                     placeholder_ts = self._get_timestamp()
-                    ai_row = self._create_ai_row(row, run_number, None, placeholder_ts, column_mapping)
+                    ai_row = self._create_ai_row(row, run_number, None, placeholder_ts, column_mapping, model_name=None, provider=None)
                     ai_row['Analysis_Status'] = f'RAW_MISSING_RUN{run_number}_{placeholder_ts}'
                     ai_rows_for_article.append(ai_row)
                     results.append(ai_row)
@@ -767,20 +1012,21 @@ class BatchAnalyzer:
                 raw_text = record.get('raw_response')
                 api_timestamp = record.get('timestamp') or self._get_timestamp()
                 model_name = record.get('model')
+                provider = record.get('provider')
 
                 if status == 'success' and raw_text:
                     answers = self.parser.parse_response(raw_text)
                     if answers:
-                        ai_row = self._create_ai_row(row, run_number, answers, api_timestamp, column_mapping, model_name=model_name)
+                        ai_row = self._create_ai_row(row, run_number, answers, api_timestamp, column_mapping, model_name=model_name, provider=provider)
                         ai_answer_sets.append((answers, api_timestamp))
                         ai_success_count += 1
                     else:
                         print(f"  ⚠️ Parse error for run {run_number}")
-                        ai_row = self._create_ai_row(row, run_number, None, api_timestamp, column_mapping, model_name=model_name)
+                        ai_row = self._create_ai_row(row, run_number, None, api_timestamp, column_mapping, model_name=model_name, provider=provider)
                         ai_row['Analysis_Status'] = f'PARSE_ERROR_RUN{run_number}_{api_timestamp}'
                         self.stats['analysis_error'] += 1
                 else:
-                    ai_row = self._create_ai_row(row, run_number, None, api_timestamp, column_mapping, model_name=model_name)
+                    ai_row = self._create_ai_row(row, run_number, None, api_timestamp, column_mapping, model_name=model_name, provider=provider)
                     label = error_type or status or 'ANALYSIS_ERROR'
                     ai_row['Analysis_Status'] = f'{label.upper()}_RUN{run_number}_{api_timestamp}'
 
@@ -972,7 +1218,8 @@ class BatchAnalyzer:
         ai_answers: Optional[Dict],
         api_timestamp: str,
         column_mapping: Dict[int, str],
-        model_name: Optional[str] = None
+        model_name: Optional[str] = None,
+        provider: Optional[str] = None
     ) -> Dict:
         """创建AI结果行"""
         ai_row = row.to_dict()
@@ -982,7 +1229,8 @@ class BatchAnalyzer:
             # Reconstruct source ID format: model-temp-reasoning-verbosity-runX
             reasoning = self.config.get_reasoning_effort()
             verbosity = self.config.get_text_verbosity()
-            base_source = f"{model_name}-temp{self.config.TEMPERATURE}-reasoning_{reasoning}-verbosity_{verbosity}"
+            provider_prefix = f"{provider}-" if provider else ""
+            base_source = f"{provider_prefix}{model_name}-temp{self.config.TEMPERATURE}-reasoning_{reasoning}-verbosity_{verbosity}"
             run_source_id = f"{base_source}-run{run_number}"
         else:
             # Fallback to default logic (using pos_idx as run_number-1)
