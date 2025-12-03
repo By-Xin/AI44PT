@@ -553,6 +553,48 @@ def _build_confusion_tables(summary_df: pd.DataFrame) -> List[Tuple[str, pd.Data
     if human_series.empty:
         return []
 
+    tables: List[Tuple[str, pd.DataFrame]] = []
+
+    # 多分类混淆矩阵
+    tables.extend(_build_confusion_matrix_tables(human_series, ai_series, title_prefix=""))
+
+    # 二分类混淆矩阵：Type1/2 vs Type3/4（其余归为 Other/Unknown）
+    tables.extend(_build_binary_confusion_tables(human_series, ai_series))
+
+    return tables
+
+
+def _build_binary_confusion_tables(
+    human_series: pd.Series,
+    ai_series: pd.Series,
+) -> List[Tuple[str, pd.DataFrame]]:
+    def _bin_label(label: str) -> str:
+        text = str(label or "").strip().lower()
+        if text.startswith("type 1") or text == "1":
+            return "Type1/2"
+        if text.startswith("type 2") or text == "2":
+            return "Type1/2"
+        if text.startswith("type 3") or text == "3":
+            return "Type3/4"
+        if text.startswith("type 4") or text == "4":
+            return "Type3/4"
+        return "Other/Unknown"
+
+    human_bin = human_series.apply(_bin_label)
+    ai_bin = ai_series.apply(_bin_label)
+
+    labels = sorted(set(human_bin.unique()).union(set(ai_bin.unique())))
+    if len(labels) <= 1:
+        return []
+
+    return _build_confusion_matrix_tables(human_bin, ai_bin, title_prefix="Binary (Type1+2 vs Type3+4) - ")
+
+
+def _build_confusion_matrix_tables(
+    human_series: pd.Series,
+    ai_series: pd.Series,
+    title_prefix: str = "",
+) -> List[Tuple[str, pd.DataFrame]]:
     labels = sorted(set(human_series.unique()).union(set(ai_series.unique())))
 
     counts = pd.crosstab(human_series, ai_series, dropna=False).reindex(index=labels, columns=labels, fill_value=0)
@@ -624,19 +666,22 @@ def _build_confusion_tables(summary_df: pd.DataFrame) -> List[Tuple[str, pd.Data
         top_errors_df = top_errors_df.sort_values("Count", ascending=False).reset_index(drop=True)
 
     tables = [
-        ("Confusion matrix (counts)", counts.reset_index().rename(columns={counts.index.name or "row_0": "Human Type"})),
         (
-            "Row-normalised (%)",
+            f"{title_prefix}Confusion matrix (counts)",
+            counts.reset_index().rename(columns={counts.index.name or "row_0": "Human Type"}),
+        ),
+        (
+            f"{title_prefix}Row-normalised (%)",
             _format_percent_df(row_norm).reset_index().rename(columns={row_norm.index.name or "index": "Human Type"}),
         ),
         (
-            "Column-normalised (%)",
+            f"{title_prefix}Column-normalised (%)",
             _format_percent_df(col_norm).reset_index().rename(columns={col_norm.index.name or "index": "Human Type"}),
         ),
-        ("Per-class metrics", pd.DataFrame(metrics_rows)),
+        (f"{title_prefix}Per-class metrics", pd.DataFrame(metrics_rows)),
     ]
     if not top_errors_df.empty:
-        tables.append(("Top error pairs", top_errors_df))
+        tables.append((f"{title_prefix}Top error pairs", top_errors_df))
     return tables
 
 

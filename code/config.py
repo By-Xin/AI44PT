@@ -23,7 +23,7 @@ class Config:
     MAINBODY_MD = PROJECT_ROOT / "data" / "instructions" / "MainBody.md"
 
     # Excel和PDF路径配置
-    EXCEL_PATH = PROJECT_ROOT / "data" / "processed" / "JRGsamples" / "JRG40.xlsx"
+    EXCEL_PATH = PROJECT_ROOT / "data" / "processed" / "JRGsamples" / "JRG_full.xlsx"
     PDF_FOLDER = PROJECT_ROOT / "data" / "processed" / "JRGsamples"
 
     # 输出配置
