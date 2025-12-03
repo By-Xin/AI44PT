@@ -72,21 +72,27 @@ You have access to the full theoretical texts below. You must read and internali
 ### CRITICAL REMINDERS
 Based on previous issues, please carefully adhere to the following instructions when generating your response. Yet please keep in mind that these are examples of common pitfalls, not an exhaustive list. Always refer back to the coding task definitions and for final judgment.
 
-**1. THE "ON-THE-GROUND PROBLEM"**
-**"On-the-ground problem" refers to substantive, empirically measurable specific policy problems that are: **Specific**: Points to particular events or phenomena, not abstract concepts, or **Teleological**: Analysis begins and ends with solving this specific problem, not validating a universal theory.
-Examples of TRUE "On-the-Ground Problems": - **Specific environmental crises**: Illegal logging in Amazon forests, overfishing of Atlantic cod, toxic chemical discharge in a specific river - **Measurable targets**: Global temperature rise limited to 1.5°C, reducing traffic accident deaths, preventing extinction of a specific species (e.g., spotted owl) - **Concrete access issues**: Access to K-12 education, clean water supply for urban populations
- What "On-the-Ground Problem" does NOT mean:
-**✗ Abstract values/concepts:**- "Environmental conservation" - "Equity" - "Human rights" - "Social welfare maximization"- "Stakeholder consensus"- "Legitimacy" 
-**✗ Policy/governance mechanisms:**- Ecolabel compliance issues- Regulatory enforcement challenges- Top-down policy effectiveness- Information asymmetries - Certification processes- Institutional fragmentation
+1. THE "ON-THE-GROUND PROBLEM" 
+"On-the-ground problem"  refers to substantive, empirically measurable policy problems that are: Specific: Points to particular events or phenomena, not abstract concepts: Analysis begins and ends with solving this specific problem, not validating a universal theory. 
 
-**2. THE TYPE 4 "STRICTNESS" FALLACY**
-* **The Error:** AI often classifies articles as Type 4 just because they advocate for "strict rules" or "punishment."
-* **The Rule:** Strict enforcement of a market rule (e.g., timber legality) is often **Type 1** (Commons/Market rules) or **Type 3** (Rule of Law).
-* **True Type 4:** Type 4 is defined by **Lexical Priority**. It argues that a specific outcome (e.g., ecological integrity) is *incommensurable* and must be achieved *regardless* of economic utility or stakeholder consensus.
+In sum, the analysis must be problem-justified: it must apply its analytical frame or research question in ways that help improve, mitigate, or resolve the specific on-the-ground problem in question.
 
-**3. THE "UTILITY" KEYWORD TRAP**
-* **The Error:** Classifying as Type 2 just because the word "utility" or "efficiency" appears.
-* **The Rule:** Determine if the author *adopts* utility maximization as their goal (Type 1/2) or *critiques* it. Do not simply rely on keyword presence. Focus on the *role* of utility in their argument. For example, if they CRITIQUE utility maximization as insufficient, it may indicate Type 3 or 4.
+
+Examples of TRUE "On-the-Ground Problems": 
+- Specific environmental crises: overfishing of Atlantic cod, toxic chemical discharge in a specific river the is causing degradation to ecological system or human health. It could also be reducing traffic deaths to a very precise level  
+- Measurable targets: Global temperature rise limited to 1.5°C, reductions in traffic accident deaths, preventing extinction of a specific species (e.g., spotted owl)
+- Concrete access issues: clean water supply for urban populations. It could also include universal access to K-12 education as that is measurable and clear: i.e. all children be abe to receive training. 
+
+What "On-the-Ground Problem" does NOT mean: 
+- Abstract values/concepts:- "Environmental conservation" - "Equity" - "Human rights" - "Social welfare maximization"- "Stakeholder consensus"- "Legitimacy" 
+- Policy/governance mechanisms:- building governance systems that have increased legitimacy, improving coherence of fragmented governance; improving regulatory compliance. These questions may matter bu tonly if targetted towards their effects – positive or negative, on “on the ground” problems. 
+
+
+2. THE "UTILITY" KEYWORD TRAP
+
+- The Error: Classifying as Type 2 just because the word "utility" or "efficiency" appears.
+- The Rule: Determine if the author adopts utility maximization as their goal (Type 1/2) or critiques it. Do not simply rely on keyword presence. Focus on the role of utility in their argument. For example, if they CRITIQUE utility maximization as insufficient, it may indicate Type 3 or 4.
+
 
 ### Article to Analyze
 {article_text}
