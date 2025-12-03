@@ -1037,12 +1037,8 @@ def _detail_sort_key(source_value: str):
 
 
 def _build_question_column_map(columns: pd.Index) -> Dict[int, str]:
-    mapping: Dict[int, str] = {}
-    for col in columns:
-        match = QUESTION_COLUMN_PATTERN.search(str(col))
-        if match:
-            mapping[int(match.group(1))] = col
-    return mapping
+    maps = Config.build_question_maps(columns)
+    return maps.as_qnum_map(prefer_human=True)
 
 
 def _derive_q15_vote_counter(ai_rows: pd.DataFrame, q15_column: Optional[str]) -> Counter:

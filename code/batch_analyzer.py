@@ -18,7 +18,7 @@ try:
 except ImportError:
     tqdm = None
 
-from config import Config
+from config import Config, QuestionMaps
 from prompts import SYSTEM_PROMPT, build_user_prompt, format_questions_prompt
 from document_reader import DocumentReader
 from response_parser import ResponseParser
@@ -899,9 +899,14 @@ class BatchAnalyzer:
         # 确保新增问题列存在
         self._ensure_question_columns(df_human)
 
-        # 获取列名映射
-        column_mapping = self._get_column_mapping(df_human.columns)
-        self.logger.info("Found %s question mappings", len(column_mapping))
+        # 获取列名映射（人类/AI/概念层）
+        question_maps: QuestionMaps = self.config.build_question_maps(df_human.columns)
+        qnum_map = question_maps.as_qnum_map(prefer_human=True)
+        self.logger.info(
+            "Found %s human question columns, %s AI question columns",
+            len(question_maps.human),
+            len(question_maps.ai),
+        )
 
         self.last_parse_run_counts = {}
 
@@ -951,8 +956,8 @@ class BatchAnalyzer:
             title = row.get('Title of the Paper', 'Unknown')
 
             self.logger.info("[%s/%s] Parsing article #%s: %s...", seq_idx, total_articles, article_id, title[:50])
-            q_human_col = column_mapping.get(15)
-            q_ai_col = column_mapping.get(self.config.Q_ID_CLASSIFICATION)
+            q_human_col = question_maps.human.get(15)
+            q_ai_col = question_maps.ai.get(self.config.Q_ID_CLASSIFICATION)
 
             # 添加human结果行
             human_row = row.to_dict()
@@ -966,7 +971,7 @@ class BatchAnalyzer:
             article_records = records_by_article.get(article_id, [])
             if not article_records:
                 self.logger.warning("  ⚠️ No raw records found; adding RAW_NOT_FOUND rows")
-                results.extend(self._create_error_rows(row, 'RAW_NOT_FOUND', column_mapping))
+                results.extend(self._create_error_rows(row, 'RAW_NOT_FOUND', question_maps))
                 self.stats['analysis_error'] += 1
                 continue
 
@@ -1019,7 +1024,7 @@ class BatchAnalyzer:
                 if not record:
                     self.logger.warning("  ⚠️ Missing raw record for run %s; inserting placeholder", run_number)
                     placeholder_ts = self._get_timestamp()
-                    ai_row = self._create_ai_row(row, run_number, None, placeholder_ts, column_mapping, model_name=None, provider=None)
+                    ai_row = self._create_ai_row(row, run_number, None, placeholder_ts, question_maps, model_name=None, provider=None)
                     ai_row['Analysis_Status'] = f'RAW_MISSING_RUN{run_number}_{placeholder_ts}'
                     ai_rows_for_article.append(ai_row)
                     results.append(ai_row)
@@ -1036,16 +1041,16 @@ class BatchAnalyzer:
                 if status == 'success' and raw_text:
                     answers = self.parser.parse_response(raw_text)
                     if answers:
-                        ai_row = self._create_ai_row(row, run_number, answers, api_timestamp, column_mapping, model_name=model_name, provider=provider)
+                        ai_row = self._create_ai_row(row, run_number, answers, api_timestamp, question_maps, model_name=model_name, provider=provider)
                         ai_answer_sets.append((answers, api_timestamp))
                         ai_success_count += 1
                     else:
                         self.logger.warning("  ⚠️ Parse error for run %s", run_number)
-                        ai_row = self._create_ai_row(row, run_number, None, api_timestamp, column_mapping, model_name=model_name, provider=provider)
+                        ai_row = self._create_ai_row(row, run_number, None, api_timestamp, question_maps, model_name=model_name, provider=provider)
                         ai_row['Analysis_Status'] = f'PARSE_ERROR_RUN{run_number}_{api_timestamp}'
                         self.stats['analysis_error'] += 1
                 else:
-                    ai_row = self._create_ai_row(row, run_number, None, api_timestamp, column_mapping, model_name=model_name, provider=provider)
+                    ai_row = self._create_ai_row(row, run_number, None, api_timestamp, question_maps, model_name=model_name, provider=provider)
                     label = error_type or status or 'ANALYSIS_ERROR'
                     ai_row['Analysis_Status'] = f'{label.upper()}_RUN{run_number}_{api_timestamp}'
 
@@ -1065,7 +1070,7 @@ class BatchAnalyzer:
             numeric_stats = {}
             if ai_success_count > 0:
                 majority_results, vote_details, numeric_stats = self.voter.perform_vote(
-                    ai_answer_sets, column_mapping
+                    ai_answer_sets, question_maps.ai
                 )
 
             ai_agreement_label = self._summarize_classification_agreement(vote_details, ai_success_count)
@@ -1093,7 +1098,7 @@ class BatchAnalyzer:
                 ai_success_count >= 2):
                 
                 vote_output = self._create_majority_vote_row(
-                    row, ai_answer_sets, column_mapping,
+                    row, ai_answer_sets, question_maps,
                     majority_results, vote_details, numeric_stats
                 )
                 
@@ -1140,9 +1145,9 @@ class BatchAnalyzer:
             return pd.DataFrame()
 
         df_results = pd.DataFrame(results)
-        df_results = self._add_derived_columns(df_results, column_mapping)
-        df_results = self._apply_human_vs_consensus(df_results, column_mapping)
-        df_results, excel_output_path = self._finalize_dataframe(df_results, df_human, column_mapping)
+        df_results = self._add_derived_columns(df_results, qnum_map)
+        df_results = self._apply_human_vs_consensus(df_results, qnum_map)
+        df_results, excel_output_path = self._finalize_dataframe(df_results, df_human, qnum_map)
 
         _ = export_excel(
             df_results,
@@ -1183,20 +1188,10 @@ class BatchAnalyzer:
         """生成时间戳 (yymmddhhmmss)"""
         return datetime.now().strftime('%y%m%d%H%M%S')
 
-    def _get_column_mapping(self, columns) -> Dict[int, str]:
-        """获取问题编号到列名的映射"""
-        mapping = {}
-        for col in columns:
-            match = re.search(r'\[Q(\d+)\]', col)
-            if match:
-                q_num = int(match.group(1))
-                mapping[q_num] = col
-        return mapping
-
     def _ensure_question_columns(self, df: pd.DataFrame):
         """确保所有问题列存在"""
         added = []
-        for q_num, col_name in self.config.ADDITIONAL_QUESTION_COLUMNS.items():
+        for col_name in self.config.get_required_ai_columns():
             if col_name not in df.columns:
                 df[col_name] = ''
                 added.append(col_name)
@@ -1207,7 +1202,7 @@ class BatchAnalyzer:
         self,
         row: pd.Series,
         error_type: str,
-        column_mapping: Dict[int, str]
+        question_maps: QuestionMaps
     ) -> List[Dict]:
         """创建错误行"""
         ai_runs = self.config.get_ai_runs()
@@ -1218,8 +1213,8 @@ class BatchAnalyzer:
             ai_row['source'] = run_source_id
             ai_row['Analysis_Status'] = f'{error_type}_{self._get_timestamp()}'
             # 清空答案
-            for q_num in column_mapping.keys():
-                ai_row[column_mapping[q_num]] = ''
+            for col_name in set(question_maps.pkey.values()).union(question_maps.ai.values()):
+                ai_row[col_name] = ''
             ai_row[self.AI_AGREEMENT_COL] = ''
             ai_row[self.HUMAN_VS_AI_COL] = ''
             ai_row[self.HUMAN_VS_CONSENSUS_COL] = ''
@@ -1236,7 +1231,7 @@ class BatchAnalyzer:
         run_number: int,
         ai_answers: Optional[Dict],
         api_timestamp: str,
-        column_mapping: Dict[int, str],
+        question_maps: QuestionMaps,
         model_name: Optional[str] = None,
         provider: Optional[str] = None
     ) -> Dict:
@@ -1263,17 +1258,22 @@ class BatchAnalyzer:
 
         ai_row['source'] = run_source_id
 
+        target_columns = set(question_maps.pkey.values()).union(question_maps.ai.values())
         if ai_answers is None:
             ai_row['Analysis_Status'] = f'ANALYSIS_ERROR_{api_timestamp}'
-            for q_num in column_mapping.keys():
-                ai_row[column_mapping[q_num]] = ''
+            for col_name in target_columns:
+                ai_row[col_name] = ''
         else:
             ai_row['Analysis_Status'] = f'SUCCESS_{api_timestamp}'
-            for q_num in column_mapping.keys():
-                ai_row[column_mapping[q_num]] = ''
-            for q_num, col_name in column_mapping.items():
-                if q_num in ai_answers:
-                    ai_row[col_name] = ai_answers[q_num]
+            for col_name in target_columns:
+                ai_row[col_name] = ''
+            for q_num, answer in ai_answers.items():
+                pkey = self.config.AI_QNUM_TO_PKEY.get(q_num)
+                if not pkey:
+                    continue
+                col_name = question_maps.pkey.get(pkey)
+                if col_name:
+                    ai_row[col_name] = answer
 
         ai_row[self.AI_AGREEMENT_COL] = ''
         ai_row[self.HUMAN_VS_AI_COL] = ''
@@ -1288,7 +1288,7 @@ class BatchAnalyzer:
         self,
         row: pd.Series,
         ai_answer_sets: List[Tuple],
-        column_mapping: Dict[int, str],
+        question_maps: QuestionMaps,
         majority_results: Dict[int, str],
         vote_details: Dict[int, Dict],
         numeric_stats: Dict[int, Dict]
@@ -1313,17 +1313,21 @@ class BatchAnalyzer:
         majority_row['Analysis_Status'] = f'MAJORITY_VOTE_{self._get_timestamp()}'
 
         # 清空答案
-        for q_num in column_mapping.keys():
-            majority_row[column_mapping[q_num]] = ''
+        for col_name in set(question_maps.pkey.values()).union(question_maps.ai.values()):
+            majority_row[col_name] = ''
+
+        qnum_map = question_maps.as_qnum_map(prefer_human=True)
 
         # 填充投票结果
         for q_num, answer in majority_results.items():
-            if q_num in column_mapping:
-                majority_row[column_mapping[q_num]] = answer
+            col_name = question_maps.ai.get(q_num) or qnum_map.get(q_num)
+            if col_name:
+                majority_row[col_name] = answer
 
         # 填充数值统计
         for q_num, stats in numeric_stats.items():
-            if q_num not in column_mapping:
+            col_name = question_maps.ai.get(q_num) or qnum_map.get(q_num)
+            if not col_name:
                 continue
             avg_val = stats.get("average")
             count = stats.get("count")
@@ -1334,12 +1338,13 @@ class BatchAnalyzer:
                 rounded = int(round(avg_val))
                 label = self.config.CONFIDENCE_LABELS.get(rounded, "")
                 label_suffix = f" ~ {label}" if label else ""
-                majority_row[column_mapping[q_num]] = f"{avg_val:.2f}{label_suffix} (avg of {count} runs)"
+                majority_row[col_name] = f"{avg_val:.2f}{label_suffix} (avg of {count} runs)"
 
         # 主观题标记
         for q_num in self.config.SUBJECTIVE_QUESTIONS:
-            if q_num in column_mapping and q_num not in numeric_stats:
-                majority_row[column_mapping[q_num]] = '[SUBJECTIVE - NO VOTE]'
+            col_name = qnum_map.get(q_num)
+            if col_name and q_num not in numeric_stats:
+                majority_row[col_name] = '[SUBJECTIVE - NO VOTE]'
 
         self.logger.info("    ✅ Majority vote completed")
         majority_row[self.AI_AGREEMENT_COL] = ''
@@ -1628,7 +1633,7 @@ class BatchAnalyzer:
         ]
 
         q15_col = column_mapping.get(15)
-        original_cols = list(df_human.columns)
+        original_cols = [col for col in df_human.columns if col != self.config.LEGACY_AI_FINAL_TYPE_COLUMN]
 
         if q15_col and q15_col in original_cols:
             q15_index = original_cols.index(q15_col)
@@ -1646,6 +1651,10 @@ class BatchAnalyzer:
             if col not in seen:
                 ordered_cols.append(col)
                 seen.add(col)
+
+        # 删除已废弃的AI最终类型列
+        if self.config.LEGACY_AI_FINAL_TYPE_COLUMN in df.columns:
+            df = df.drop(columns=[self.config.LEGACY_AI_FINAL_TYPE_COLUMN])
 
         # 确保所有列存在
         for col in ordered_cols:

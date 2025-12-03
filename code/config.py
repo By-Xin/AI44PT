@@ -2,14 +2,34 @@
 配置模块 - 4PT批量分析系统的完整配置
 """
 import os
+import re
 import random
 import logging
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List
+from typing import Dict, Iterable, List
 from dotenv import load_dotenv
 
 # 加载环境变量
 load_dotenv()
+
+
+@dataclass
+class QuestionMaps:
+    """统一管理人类/AI/概念问题的列映射"""
+    human: Dict[int, str]
+    ai: Dict[int, str]
+    pkey: Dict[str, str]
+
+    def as_qnum_map(self, prefer_human: bool = True) -> Dict[int, str]:
+        """返回综合的题号到列名映射，支持优先人类列"""
+        merged: Dict[int, str] = dict(self.ai)
+        if prefer_human:
+            merged.update(self.human)
+        else:
+            for k, v in self.human.items():
+                merged.setdefault(k, v)
+        return merged
 
 
 class Config:
@@ -102,7 +122,82 @@ class Config:
         5: "Very Confident",
     }
 
-    # 额外问题列映射（Q18-Q25）
+    # 概念问题键（P_KEY）
+    P_KEYS = {
+        "IN_UNIVERSE": "P_IN_UNIVERSE",
+        "PROBLEM_DESCRIPTION": "P_PROBLEM_DESCRIPTION",
+        "GROUND_PROBLEM_YN": "P_GROUND_PROBLEM_YN",
+        "GROUND_PROBLEM_ARGS": "P_GROUND_PROBLEM_ARGS",
+        "GROUND_PROBLEM_QUOTES": "P_GROUND_PROBLEM_QUOTES",
+        "BEYOND_GROUND_YN": "P_BEYOND_GROUND_YN",
+        "BEYOND_GROUND_ARGS": "P_BEYOND_GROUND_ARGS",
+        "BEYOND_GROUND_QUOTES": "P_BEYOND_GROUND_QUOTES",
+        "SELF_INTEREST_YN": "P_SELF_INTEREST_YN",
+        "SELF_INTEREST_ARGS": "P_SELF_INTEREST_ARGS",
+        "SELF_INTEREST_QUOTES": "P_SELF_INTEREST_QUOTES",
+        "BEYOND_SELF_YN": "P_BEYOND_SELF_YN",
+        "BEYOND_SELF_ARGS": "P_BEYOND_SELF_ARGS",
+        "BEYOND_SELF_QUOTES": "P_BEYOND_SELF_QUOTES",
+        "FINAL_TYPE": "P_FINAL_TYPE",
+        "UNCERTAINTY_CHECK": "P_UNCERTAINTY_CHECK",
+        "FINAL_TYPE_CONFIDENCE": "P_FINAL_TYPE_CONFIDENCE",
+        "TYPE1_SUPPORT": "P_TYPE1_SUPPORT",
+        "TYPE1_CONFIDENCE": "P_TYPE1_CONFIDENCE",
+        "TYPE2_SUPPORT": "P_TYPE2_SUPPORT",
+        "TYPE2_CONFIDENCE": "P_TYPE2_CONFIDENCE",
+        "TYPE3_SUPPORT": "P_TYPE3_SUPPORT",
+        "TYPE3_CONFIDENCE": "P_TYPE3_CONFIDENCE",
+        "TYPE4_SUPPORT": "P_TYPE4_SUPPORT",
+        "TYPE4_CONFIDENCE": "P_TYPE4_CONFIDENCE",
+    }
+
+    HUMAN_QNUM_TO_PKEY = {
+        1: P_KEYS["IN_UNIVERSE"],
+        2: P_KEYS["PROBLEM_DESCRIPTION"],
+        3: P_KEYS["GROUND_PROBLEM_YN"],
+        4: P_KEYS["GROUND_PROBLEM_ARGS"],
+        5: P_KEYS["GROUND_PROBLEM_QUOTES"],
+        6: P_KEYS["BEYOND_GROUND_YN"],
+        7: P_KEYS["BEYOND_GROUND_ARGS"],
+        8: P_KEYS["BEYOND_GROUND_QUOTES"],
+        9: P_KEYS["SELF_INTEREST_YN"],
+        10: P_KEYS["SELF_INTEREST_ARGS"],
+        11: P_KEYS["SELF_INTEREST_QUOTES"],
+        12: P_KEYS["BEYOND_SELF_YN"],
+        13: P_KEYS["BEYOND_SELF_ARGS"],
+        14: P_KEYS["BEYOND_SELF_QUOTES"],
+        15: P_KEYS["FINAL_TYPE"],
+    }
+
+    AI_QNUM_TO_PKEY = {
+        1: P_KEYS["IN_UNIVERSE"],
+        2: P_KEYS["PROBLEM_DESCRIPTION"],
+        3: P_KEYS["GROUND_PROBLEM_YN"],
+        4: P_KEYS["GROUND_PROBLEM_ARGS"],
+        5: P_KEYS["GROUND_PROBLEM_QUOTES"],
+        6: P_KEYS["BEYOND_GROUND_YN"],
+        7: P_KEYS["BEYOND_GROUND_ARGS"],
+        8: P_KEYS["BEYOND_GROUND_QUOTES"],
+        9: P_KEYS["SELF_INTEREST_YN"],
+        10: P_KEYS["SELF_INTEREST_ARGS"],
+        11: P_KEYS["SELF_INTEREST_QUOTES"],
+        12: P_KEYS["BEYOND_SELF_YN"],
+        13: P_KEYS["BEYOND_SELF_ARGS"],
+        14: P_KEYS["BEYOND_SELF_QUOTES"],
+        15: P_KEYS["UNCERTAINTY_CHECK"],
+        16: P_KEYS["FINAL_TYPE"],
+        17: P_KEYS["FINAL_TYPE_CONFIDENCE"],
+        18: P_KEYS["TYPE1_SUPPORT"],
+        19: P_KEYS["TYPE1_CONFIDENCE"],
+        20: P_KEYS["TYPE2_SUPPORT"],
+        21: P_KEYS["TYPE2_CONFIDENCE"],
+        22: P_KEYS["TYPE3_SUPPORT"],
+        23: P_KEYS["TYPE3_CONFIDENCE"],
+        24: P_KEYS["TYPE4_SUPPORT"],
+        25: P_KEYS["TYPE4_CONFIDENCE"],
+    }
+
+    # 额外问题列映射（Q18-Q25及AI专属列）
     ADDITIONAL_QUESTION_COLUMNS = {
         18: "Type 1 classification support (Yes/No) [Q18]",
         19: "Type 1 classification confidence (1-5) [Q19]",
@@ -113,6 +208,23 @@ class Config:
         24: "Type 4 classification support (Yes/No) [Q24]",
         25: "Type 4 classification confidence (1-5) [Q25]",
     }
+
+    AI_ONLY_PKEY_COLUMNS = {
+        P_KEYS["UNCERTAINTY_CHECK"]: "Uncertainty check (ambiguous signals?) [AI Q15]",
+        P_KEYS["FINAL_TYPE_CONFIDENCE"]: "4PT classification confidence (1-5) [AI Q17]",
+        P_KEYS["TYPE1_SUPPORT"]: ADDITIONAL_QUESTION_COLUMNS[18],
+        P_KEYS["TYPE1_CONFIDENCE"]: ADDITIONAL_QUESTION_COLUMNS[19],
+        P_KEYS["TYPE2_SUPPORT"]: ADDITIONAL_QUESTION_COLUMNS[20],
+        P_KEYS["TYPE2_CONFIDENCE"]: ADDITIONAL_QUESTION_COLUMNS[21],
+        P_KEYS["TYPE3_SUPPORT"]: ADDITIONAL_QUESTION_COLUMNS[22],
+        P_KEYS["TYPE3_CONFIDENCE"]: ADDITIONAL_QUESTION_COLUMNS[23],
+        P_KEYS["TYPE4_SUPPORT"]: ADDITIONAL_QUESTION_COLUMNS[24],
+        P_KEYS["TYPE4_CONFIDENCE"]: ADDITIONAL_QUESTION_COLUMNS[25],
+    }
+
+    LEGACY_AI_FINAL_TYPE_COLUMN = "AI final 4PT Type [Q16]"
+
+    QUESTION_COLUMN_PATTERN = re.compile(r"\[Q(\d+)\]")
 
     # Type问题分组
     TYPE_QUESTION_GROUPS = {
@@ -125,7 +237,7 @@ class Config:
     # ==================== 4PT问题字典（25个问题）====================
     QUESTION_TEXTS = {
         1: "Does the article fit in the universe of sustainability analyses we seek to assess? (Yes/No)",
-        2: "Provide arguments that support your response to Q1 (Does the article fit in the universe of sustainability analyses we seek to assess?)",
+        2: "What problems or set of problems is the article trying to address? Provide a concise description of the main on-the-ground problem(s).",
         3: "Do the analysis, conclusions, and theories derived from, and directed to, understanding and/or managing a clearly specified 'on the ground' problem or class of problems? (Yes/No)",
         4: "Provide arguments that support your response to Q3 (Does the article address a clearly specified on-ground problem?)",
         5: "Provide some key text passages from the article that support your Q3 response",
@@ -156,6 +268,59 @@ class Config:
         [3, 4, 5],
         [6, 7, 8],
     ]
+
+    # ==================== 问题/列映射辅助 ====================
+
+    @classmethod
+    def get_required_ai_columns(cls) -> List[str]:
+        """返回需要自动追加的AI专属列"""
+        # 去重保持顺序
+        seen = set()
+        cols: List[str] = []
+        for col in cls.AI_ONLY_PKEY_COLUMNS.values():
+            if col not in seen:
+                cols.append(col)
+                seen.add(col)
+        return cols
+
+    @classmethod
+    def build_question_maps(cls, columns: Iterable[str]) -> QuestionMaps:
+        """
+        构建统一的列映射：
+        - human: 人类Excel中的题号 -> 列名
+        - ai: AI题号 -> 列名（通过P_KEY桥接到人类列或AI专属列）
+        - pkey: 概念问题键 -> 列名
+        """
+        human_map: Dict[int, str] = {}
+        pkey_map: Dict[str, str] = {}
+
+        for col in columns:
+            match = cls.QUESTION_COLUMN_PATTERN.search(str(col))
+            if not match:
+                continue
+            q_num = int(match.group(1))
+            pkey = cls.HUMAN_QNUM_TO_PKEY.get(q_num)
+            if not pkey:
+                continue
+            human_map[q_num] = col
+            pkey_map[pkey] = col
+
+        # 先把已存在的AI专属列加入pkey映射
+        for pkey, col_name in cls.AI_ONLY_PKEY_COLUMNS.items():
+            if col_name in columns and pkey not in pkey_map:
+                pkey_map[pkey] = col_name
+
+        ai_map: Dict[int, str] = {}
+        for q_num, pkey in cls.AI_QNUM_TO_PKEY.items():
+            ai_only_col = cls.AI_ONLY_PKEY_COLUMNS.get(pkey)
+            col_name = pkey_map.get(pkey) or ai_only_col
+            if not col_name and ai_only_col:
+                col_name = ai_only_col
+                pkey_map.setdefault(pkey, col_name)
+            if col_name:
+                ai_map[q_num] = col_name
+
+        return QuestionMaps(human=human_map, ai=ai_map, pkey=pkey_map)
 
     # ==================== 类方法 ====================
 
