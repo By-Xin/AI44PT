@@ -33,11 +33,22 @@ class Config:
     # ==================== OpenAI配置 ====================
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     CLS_MODEL = "gpt-5-2025-08-07"
+    # CLS_MODEL = "o3"
     TEMPERATURE = 0.1  # 0.0为完全确定性，0.1为轻微随机性
 
     # OpenAI API高级参数（适用于支持的模型）
-    DEFAULT_REASONING_EFFORT = "medium"  # "low", "medium", "high"
-    DEFAULT_TEXT_VERBOSITY = "low"  # "low", "medium", "high"
+    DEFAULT_REASONING_EFFORT = "high"  # "low", "medium", "high"
+    DEFAULT_TEXT_VERBOSITY = "medium"  # "low", "medium", "high"
+
+    # ==================== Gemini配置 ====================
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    GEMINI_MODEL = "gemini-3-pro-preview"
+
+    # ==================== LLM Provider配置 ====================
+    # 可选值: "openai", "gemini"
+    # LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()
+    LLM_PROVIDER = "openai"
+    
 
     # ==================== 批处理参数 ====================
     DEBUG_MODE = False  # 设为True将限制处理数量并降低模型开销
@@ -151,7 +162,8 @@ class Config:
         ai_runs = cls.get_ai_runs()
         reasoning = cls.get_reasoning_effort()
         verbosity = cls.get_text_verbosity()
-        return f"{cls.CLS_MODEL}-temp{cls.TEMPERATURE}-reasoning_{reasoning}-verbosity_{verbosity}"
+        model = cls.GEMINI_MODEL if cls.LLM_PROVIDER == "gemini" else cls.CLS_MODEL
+        return f"{model}-temp{cls.TEMPERATURE}-reasoning_{reasoning}-verbosity_{verbosity}"
 
     @classmethod
     def generate_question_order(cls) -> List[int]:
@@ -198,9 +210,18 @@ class Config:
         Returns:
             bool: 配置是否有效
         """
-        if not cls.OPENAI_API_KEY:
-            print("Error: OPENAI_API_KEY not found in environment")
-            print("Please set it in .env file")
+        if cls.LLM_PROVIDER == "openai":
+            if not cls.OPENAI_API_KEY:
+                print("Error: OPENAI_API_KEY not found in environment")
+                print("Please set it in .env file")
+                return False
+        elif cls.LLM_PROVIDER == "gemini":
+            if not cls.GEMINI_API_KEY:
+                print("Error: GEMINI_API_KEY not found in environment")
+                print("Please set it in .env file")
+                return False
+        else:
+            print(f"Error: Unsupported LLM_PROVIDER: {cls.LLM_PROVIDER}")
             return False
 
         if not cls.CODINGTASK_MD.exists():
@@ -238,7 +259,13 @@ class Config:
         print(f"Excel Path: {cls.EXCEL_PATH}")
         print(f"PDF Folder: {cls.PDF_FOLDER}")
         print(f"Results Dir: {cls.RESULTS_DIR}")
-        print(f"Model: {cls.CLS_MODEL}")
+        print(f"LLM Provider: {cls.LLM_PROVIDER}")
+        if cls.LLM_PROVIDER == "openai":
+            print(f"Model: {cls.CLS_MODEL}")
+            print(f"API Key: {'✓ Set' if cls.OPENAI_API_KEY else '✗ Missing'}")
+        elif cls.LLM_PROVIDER == "gemini":
+            print(f"Model: {cls.GEMINI_MODEL}")
+            print(f"API Key: {'✓ Set' if cls.GEMINI_API_KEY else '✗ Missing'}")
         print(f"Temperature: {cls.TEMPERATURE}")
         print(f"AI Runs: {cls.get_ai_runs()}")
         print(f"Reasoning Effort: {cls.get_reasoning_effort()}")

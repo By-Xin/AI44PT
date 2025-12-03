@@ -9,7 +9,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import pandas as pd
-from openai import OpenAI
 
 try:
     from tqdm import tqdm
@@ -28,6 +27,8 @@ from reporting import (
     AI_SUCCESS_RATE_COLUMN,
     Q15_VOTE_COUNTS_COLUMN,
 )
+from llm_clients.openai_client import OpenAIClient
+from llm_clients.gemini_client import GeminiClient
 
 
 class BatchAnalyzer:
@@ -53,7 +54,18 @@ class BatchAnalyzer:
         self.config.setup_directories()
 
         # 初始化组件
-        self.client = OpenAI(api_key=self.config.OPENAI_API_KEY)
+        if self.config.LLM_PROVIDER == "gemini":
+            self.client = GeminiClient(
+                api_key=self.config.GEMINI_API_KEY,
+                model=self.config.GEMINI_MODEL
+            )
+        else:
+            # Default to OpenAI
+            self.client = OpenAIClient(
+                api_key=self.config.OPENAI_API_KEY,
+                model=self.config.CLS_MODEL
+            )
+            
         self.document_reader = DocumentReader()
         self.parser = ResponseParser(self.config)
         self.voter = MajorityVoter(self.config)
@@ -119,36 +131,15 @@ class BatchAnalyzer:
         error_message = None
 
         try:
-            # 尝试使用新API
-            response = self.client.responses.create(
-                model=self.config.CLS_MODEL,
-                input=full_prompt_for_record,
-                reasoning={"effort": self.config.get_reasoning_effort()},
-                text={"verbosity": self.config.get_text_verbosity()},
+            analysis_text = self.client.generate_response(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=self.config.TEMPERATURE,
+                reasoning_effort=self.config.get_reasoning_effort(),
+                text_verbosity=self.config.get_text_verbosity()
             )
-            analysis_text = response.output_text
-        except Exception as primary_error:
-            # 回退到标准API
-            fallback_error = None
-            try:
-                response = self.client.chat.completions.create(
-                    model=self.config.CLS_MODEL,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    max_tokens=30000,
-                    temperature=self.config.TEMPERATURE
-                )
-                analysis_text = response.choices[0].message.content
-            except Exception as secondary_error:
-                fallback_error = secondary_error
-
-            if analysis_text is None:
-                if fallback_error is not None:
-                    error_message = f"{primary_error}; fallback error: {fallback_error}"
-                else:
-                    error_message = str(primary_error)
+        except Exception as e:
+            error_message = str(e)
 
         api_timestamp = self._get_timestamp()
         status = "success" if analysis_text else "error"
@@ -306,6 +297,7 @@ class BatchAnalyzer:
     ) -> Dict:
         """构建原始响应记录"""
         article_id = str(article_meta.get('article_id', 'unknown'))
+        model_name = self.config.GEMINI_MODEL if self.config.LLM_PROVIDER == "gemini" else self.config.CLS_MODEL
         return {
             "timestamp": api_timestamp,
             "status": status,
@@ -319,7 +311,7 @@ class BatchAnalyzer:
             "run_index": run_index,
             "ai_runs": article_meta.get('ai_runs'),
             "debug_mode": self.config.DEBUG_MODE,
-            "model": self.config.CLS_MODEL,
+            "model": model_name,
             "temperature": self.config.TEMPERATURE,
             "reasoning_effort": self.config.get_reasoning_effort(),
             "text_verbosity": self.config.get_text_verbosity(),
