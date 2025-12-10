@@ -125,11 +125,18 @@ class ResponseParser:
         return answers
 
     def _normalize_yes_no(self, text: str) -> str:
-        """标准化Yes/No答案"""
-        if re.search(r'\byes\b', text, re.IGNORECASE):
-            return "Yes"
-        elif re.search(r'\bno\b', text, re.IGNORECASE):
-            return "No"
+        """标准化Yes/No答案，同时保留原文理由"""
+        if text is None:
+            return text
+
+        # 优先解析开头 token 的 yes/no
+        leading = re.match(r'\s*(yes|no)\b[ \t:.-]*', text, re.IGNORECASE)
+        if leading:
+            label = "Yes" if leading.group(1).lower() == "yes" else "No"
+            remainder = text[leading.end():].strip(" \t-:;")
+            return f"{label} - {remainder}" if remainder else label
+
+        # 若首词无法解析，则保持原文以便审计/回溯
         return text
 
     def _normalize_confidence(self, text: str) -> str:
