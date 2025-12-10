@@ -1382,7 +1382,7 @@ class BatchAnalyzer:
 
         tie_count = sum(1 for _, cnt in counts.items() if cnt == top_count)
         if tie_count > 1:
-            detail_text = ", ".join(f"{ans}:{cnt}" for ans, cnt in sorted_counts)
+            detail_text = ", ".join(f"{cnt}*{ans}" for ans, cnt in sorted_counts)
             return f"Split consensus ({detail_text})"
 
         ratio = top_count / total_votes
@@ -1395,7 +1395,7 @@ class BatchAnalyzer:
         else:
             label = "Plurality"
 
-        detail_text = ", ".join(f"{ans}:{cnt}" for ans, cnt in sorted_counts)
+        detail_text = ", ".join(f"{cnt}*{ans}" for ans, cnt in sorted_counts)
         return f"{label} ({detail_text})"
 
     def _format_classification_vote_counts(
@@ -1412,7 +1412,7 @@ class BatchAnalyzer:
         if not vote_counts:
             return ''
         sorted_counts = sorted(vote_counts.items(), key=lambda item: (-item[1], item[0]))
-        counts_text = ", ".join(f"{answer}:{count}" for answer, count in sorted_counts)
+        counts_text = ", ".join(f"{count}*{answer}" for answer, count in sorted_counts)
         if is_tie:
             return f"Tie ({counts_text})"
         return counts_text
