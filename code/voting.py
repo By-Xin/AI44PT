@@ -216,21 +216,6 @@ class MajorityVoter:
 
         return answer
 
-    def _normalize_confidence_for_vote(self, answer: str) -> str:
-        """标准化Type Confidence用于投票"""
-        answer_lower = answer.lower()
-        # 使用配置中的标签
-        labels = self.config.CONFIDENCE_LABELS
-        
-        # 尝试提取数字
-        match = re.search(r'[1-5]', answer)
-        if match:
-            num = int(match.group())
-            label = labels.get(num, "")
-            return f"{num} - {label}" if label else str(num)
-            
-        return answer
-
     def _calculate_numeric_stats(
         self,
         successful_results: List[Dict]
