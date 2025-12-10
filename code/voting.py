@@ -118,9 +118,12 @@ class MajorityVoter:
             if most_common:
                 winner_answer, winner_count = most_common[0]
 
+                # 格式化计数文本供平票使用
+                counts_text = ", ".join(f"{cnt}*{ans}" for ans, cnt in most_common)
+
                 # 检查是否有平票情况
                 if len(most_common) > 1 and most_common[0][1] == most_common[1][1]:
-                    majority_answers[q_num] = f"{winner_answer} [TIE]"
+                    majority_answers[q_num] = f"Tie ({counts_text})"
                 else:
                     majority_answers[q_num] = winner_answer
 
