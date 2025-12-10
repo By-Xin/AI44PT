@@ -510,7 +510,19 @@ class BatchAnalyzer:
             if output_path.suffix:
                 base_dir = output_path.parent
                 run_dir_name = output_path.stem
-                final_filename = output_path.name
+                # Enforce aggregated file to be .json to avoid clobbering JSONL stream
+                if output_path.suffix.lower() == ".jsonl":
+                    self.logger.warning(
+                        "Output path uses .jsonl; switching aggregated output to .json to prevent overwrite"
+                    )
+                    final_filename = output_path.with_suffix(".json").name
+                elif output_path.suffix.lower() != ".json":
+                    self.logger.warning(
+                        "Output path suffix %s is not .json; using .json for aggregated output", output_path.suffix
+                    )
+                    final_filename = output_path.with_suffix(".json").name
+                else:
+                    final_filename = output_path.name
             else:
                 base_dir = output_path
                 run_dir_name = f"raw_batch_{timestamp}"

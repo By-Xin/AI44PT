@@ -116,7 +116,7 @@ def main():
         if raw_path_arg:
             if raw_path_arg.is_dir():
                 raw_path_arg.mkdir(parents=True, exist_ok=True)
-                raw_output_path = raw_path_arg / f"raw_responses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jsonl"
+                raw_output_path = raw_path_arg / f"raw_responses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
                 logger.info("📁 Raw output target: %s", raw_output_path)
             else:
                 raw_output_path = raw_path_arg
