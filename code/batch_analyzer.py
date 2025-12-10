@@ -45,6 +45,9 @@ class BatchAnalyzer:
     AI_TOTAL_COUNT_COL = AI_TOTAL_COUNT_COLUMN
     AI_SUCCESS_RATE_COL = AI_SUCCESS_RATE_COLUMN
     Q15_VOTE_COUNTS_COL = Q15_VOTE_COUNTS_COLUMN
+    DECISION_TREE_COL = 'Decision Tree 4PT'
+    SUPPORT_TYPES_COL = 'Type support (Q18/20/22/24)'
+    FINAL_AI_DECISION_COL = 'Final AI decision'
 
     def __init__(self, config: Config = None):
         """
@@ -1158,7 +1161,6 @@ class BatchAnalyzer:
 
         df_results = pd.DataFrame(results)
         df_results = self._add_derived_columns(df_results, qnum_map)
-        df_results = self._apply_human_vs_consensus(df_results, qnum_map)
         df_results, excel_output_path = self._finalize_dataframe(df_results, df_human, qnum_map)
 
         _ = export_excel(
@@ -1437,6 +1439,10 @@ class BatchAnalyzer:
         if not ai_value:
             return 'AI majority missing'
 
+        ai_lower = ai_value.lower()
+        if ai_lower.startswith('tie'):
+            return 'AI tie (no majority)'
+
         normalized_human = self.voter._normalize_type_for_vote(human_value) if human_value else ''
         normalized_ai = self.voter._normalize_type_for_vote(ai_value) if ai_value else ''
 
@@ -1469,99 +1475,17 @@ class BatchAnalyzer:
             return False
         tied = sum(1 for value in counts.values() if value == max_count)
         return tied > 1
-
-    def _compare_human_vs_consensus(
-        self,
-        human_row: pd.Series,
-        consensus_row: pd.Series,
-        column_mapping: Dict[int, str],
-        consensus_col: str
-    ) -> str:
-        """比较人类Q15与多数投票的共识结果"""
-        consensus_value = str(consensus_row.get(consensus_col, '') or '').strip()
-        if not consensus_value:
-            return 'Consensus missing'
-
-        lower_val = consensus_value.lower()
-        if 'no data' in lower_val:
-            return 'Consensus unavailable (no data)'
-        if 'no clear' in lower_val:
-            return 'Consensus unclear'
-
-        q15_col = column_mapping.get(15)
-        human_raw = str(human_row.get(q15_col, '') or '').strip() if q15_col else ''
-        if not human_raw:
-            return f"Human missing (Consensus={consensus_value})"
-
-        normalized_human = self.voter._normalize_type_for_vote(human_raw)
-        if not normalized_human:
-            return f"Human unclassified (Consensus={consensus_value})"
-
-        type_matches = re.findall(r'Type\s*([1-4])', consensus_value, flags=re.IGNORECASE)
-        if not type_matches:
-            return f"Consensus text: {consensus_value}"
-
-        consensus_types = sorted({f"Type {match}" for match in type_matches})
-        if normalized_human in consensus_types:
-            if len(consensus_types) == 1:
-                return f"Match ({normalized_human})"
-            return f"Match within tie ({normalized_human}; Consensus={', '.join(consensus_types)})"
-
-        return f"Mismatch (Human={normalized_human}, Consensus={', '.join(consensus_types)})"
-
-    def _apply_human_vs_consensus(
-        self,
-        df: pd.DataFrame,
-        column_mapping: Dict[int, str]
-    ) -> pd.DataFrame:
-        """在派生列计算后填充人类与共识的比较结果"""
-        consensus_col = 'Type consensus (Q18-Q25 summary)'
-        if consensus_col not in df.columns:
-            return df
-
-        if self.HUMAN_VS_CONSENSUS_COL not in df.columns:
-            df[self.HUMAN_VS_CONSENSUS_COL] = ''
-        else:
-            df[self.HUMAN_VS_CONSENSUS_COL] = df[self.HUMAN_VS_CONSENSUS_COL].fillna('')
-
-        for _, group in df.groupby('#'):
-            human_rows = group[group['source'] == 'human']
-            if human_rows.empty:
-                continue
-
-            human_idx = human_rows.index[0]
-            human_row = df.loc[human_idx]
-
-            majority_rows = group[group['source'].str.contains('majority-vote', na=False)]
-            if majority_rows.empty:
-                agreement_text = str(human_row.get(self.AI_AGREEMENT_COL, '') or '').lower()
-                if 'split consensus' in agreement_text or 'tie' in agreement_text:
-                    df.at[human_idx, self.HUMAN_VS_CONSENSUS_COL] = 'Tie (no AI majority)'
-                else:
-                    df.at[human_idx, self.HUMAN_VS_CONSENSUS_COL] = 'No AI majority'
-                continue
-
-            majority_idx = majority_rows.index[0]
-            majority_row = df.loc[majority_idx]
-            comparison = self._compare_human_vs_consensus(
-                human_row, majority_row, column_mapping, consensus_col
-            )
-            df.at[human_idx, self.HUMAN_VS_CONSENSUS_COL] = comparison
-            df.at[majority_idx, self.HUMAN_VS_CONSENSUS_COL] = comparison
-
-        return df
-
     def _compose_type_summary(
         self,
         row: pd.Series,
         column_mapping: Dict[int, str],
         decision_tree_col: str,
-        consensus_col: str
+        support_types_col: str,
+        final_decision_col: str,
     ) -> str:
-        """整合Q15/Q16、决策树和共识结果"""
+        """整合Q15/Q16、决策树、支持信号与最终决策"""
         parts = []
         
-        # Determine classification column based on source
         source = str(row.get('source', '')).lower()
         if source == 'human':
             q_col = column_mapping.get(15)
@@ -1579,11 +1503,118 @@ class BatchAnalyzer:
         if decision_val:
             parts.append(f"DecisionTree={decision_val}")
 
-        consensus_val = str(row.get(consensus_col, '') or '').strip()
-        if consensus_val:
-            parts.append(f"Consensus={consensus_val}")
+        support_val = str(row.get(support_types_col, '') or '').strip()
+        if support_val:
+            parts.append(f"Support={support_val}")
+
+        final_val = str(row.get(final_decision_col, '') or '').strip()
+        if final_val:
+            parts.append(f"Final={final_val}")
 
         return " | ".join(parts)
+
+    def _normalize_type_label(self, value) -> str:
+        """标准化类型标签，处理缺失/平票文本"""
+        if value is None or (isinstance(value, float) and pd.isna(value)):
+            return ''
+        text = str(value).strip()
+        if not text:
+            return ''
+        lower = text.lower()
+        if lower.startswith('tie'):
+            return ''
+        normalized = self.voter._normalize_type_for_vote(text)
+        return normalized or text
+
+    def _derive_support_types(self, row: pd.Series, column_mapping: Dict[int, str]) -> str:
+        """从Q18/20/22/24提取支持的Type列表"""
+        yes_types: List[str] = []
+        saw_any = False
+
+        for type_id, q_map in self.config.TYPE_QUESTION_GROUPS.items():
+            support_col = column_mapping.get(q_map["support"])
+            if not support_col:
+                continue
+            raw = row.get(support_col)
+            if raw is None or (isinstance(raw, float) and pd.isna(raw)):
+                continue
+            saw_any = True
+            normalized = self.voter._normalize_yes_no_for_vote(str(raw))
+            if normalized == 'Yes':
+                yes_types.append(f"Type {type_id}")
+
+        if not saw_any:
+            return ''
+        if not yes_types:
+            return 'None'
+        if len(yes_types) == 1:
+            return yes_types[0]
+        return "+".join(sorted(yes_types))
+
+    def _select_support_primary(self, support_value: str) -> str:
+        """提取单一支持类型，若多选/缺失则返回空"""
+        if not support_value:
+            return ''
+        if support_value.lower() == 'none':
+            return ''
+        parts = [p.strip() for p in support_value.split('+') if p.strip()]
+        if len(parts) == 1 and parts[0].lower().startswith('type'):
+            return parts[0]
+        return ''
+
+    def _summarize_run_agreement(
+        self,
+        row: pd.Series,
+        column_mapping: Dict[int, str],
+        decision_tree_col: str,
+        support_types_col: str
+    ) -> str:
+        """汇总单次运行的三路信号一致性（Q16、决策树、Q18-24支持）"""
+        q16_col = column_mapping.get(self.config.Q_ID_CLASSIFICATION)
+        q16_type = self._normalize_type_label(row.get(q16_col)) if q16_col else ''
+        tree_type = self._normalize_type_label(row.get(decision_tree_col))
+        support_value = str(row.get(support_types_col, '') or '').strip()
+        support_type = self._select_support_primary(support_value)
+
+        signals = {}
+        if q16_type:
+            signals["Q16"] = q16_type
+        if tree_type:
+            signals["DecisionTree"] = tree_type
+        if support_type:
+            signals["Support"] = support_type
+
+        if not signals:
+            return "Insufficient data"
+
+        unique_types = set(signals.values())
+        if len(unique_types) == 1:
+            agreed_type = unique_types.pop()
+            return f"Agree ({agreed_type})"
+
+        parts = [f"{k}={v}" for k, v in signals.items()]
+        return "Disagree (" + " | ".join(parts) + ")"
+
+    def _choose_final_ai_decision(
+        self,
+        row: pd.Series,
+        column_mapping: Dict[int, str],
+        decision_tree_col: str,
+        support_types_col: str
+    ) -> str:
+        """确定最终AI决策，优先Q16，其次决策树，最后单一支持类型"""
+        q16_col = column_mapping.get(self.config.Q_ID_CLASSIFICATION)
+        q16_type = self._normalize_type_label(row.get(q16_col)) if q16_col else ''
+        if q16_type:
+            return q16_type
+
+        tree_type = self._normalize_type_label(row.get(decision_tree_col))
+        if tree_type:
+            return tree_type
+
+        support_value = str(row.get(support_types_col, '') or '').strip()
+        support_type = self._select_support_primary(support_value)
+        return support_type
 
     def _get_run_source_id(self, run_idx: int) -> str:
         """获取运行source ID"""
@@ -1597,24 +1628,41 @@ class BatchAnalyzer:
         df: pd.DataFrame,
         column_mapping: Dict[int, str]
     ) -> pd.DataFrame:
-        """添加派生列（Decision Tree 和 Consensus）"""
+        """添加派生列（Decision Tree、Q18-24支持、AI内部一致性、最终决策）"""
         self.logger.info("🌳 Calculating derived classifications...")
 
-        decision_tree_col = 'Decision Tree 4PT'
-        type_consensus_col = 'Type consensus (Q18-Q25 summary)'
+        decision_tree_col = self.DECISION_TREE_COL
+        support_types_col = self.SUPPORT_TYPES_COL
+        final_decision_col = self.FINAL_AI_DECISION_COL
 
         df[decision_tree_col] = df.apply(
             lambda row: DecisionTreeClassifier.calculate_4pt_type(row, column_mapping),
             axis=1
         )
-        df[type_consensus_col] = df.apply(
-            lambda row: self.consensus_analyzer.derive_consensus(row, column_mapping),
+
+        df[support_types_col] = df.apply(
+            lambda row: self._derive_support_types(row, column_mapping),
             axis=1
         )
+
+        df[self.AI_AGREEMENT_COL] = df.apply(
+            lambda row: self._summarize_run_agreement(
+                row, column_mapping, decision_tree_col, support_types_col
+            ),
+            axis=1
+        )
+
+        df[final_decision_col] = df.apply(
+            lambda row: self._choose_final_ai_decision(
+                row, column_mapping, decision_tree_col, support_types_col
+            ),
+            axis=1
+        )
+
         summary_col = self.TYPE_SUMMARY_COL
         df[summary_col] = df.apply(
             lambda row: self._compose_type_summary(
-                row, column_mapping, decision_tree_col, type_consensus_col
+                row, column_mapping, decision_tree_col, support_types_col, final_decision_col
             ),
             axis=1
         )
@@ -1629,15 +1677,14 @@ class BatchAnalyzer:
         """整理DataFrame列顺序并返回结果及输出路径"""
         # 调整列顺序
         base_cols = ['#', 'source', 'Analysis_Status']
-        decision_tree_col = 'Decision Tree 4PT'
-        type_consensus_col = 'Type consensus (Q18-Q25 summary)'
+        decision_tree_col = self.DECISION_TREE_COL
         extra_cols = [
             decision_tree_col,
-            type_consensus_col,
+            self.SUPPORT_TYPES_COL,
             self.AI_AGREEMENT_COL,
             self.HUMAN_VS_AI_COL,
-            self.HUMAN_VS_CONSENSUS_COL,
             self.TYPE_SUMMARY_COL,
+            self.FINAL_AI_DECISION_COL,
             self.AI_SUCCESS_COUNT_COL,
             self.AI_TOTAL_COUNT_COL,
             self.AI_SUCCESS_RATE_COL,
