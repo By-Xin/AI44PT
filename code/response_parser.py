@@ -116,9 +116,11 @@ class ResponseParser:
         if self.config.Q_ID_CLASSIFICATION in answers:
             answers[self.config.Q_ID_CLASSIFICATION] = self._normalize_type_classification(answers[self.config.Q_ID_CLASSIFICATION])
 
-        # 标准化难度等级 (Q17)
+        # 标准化全局置信度 (Q17)
         if self.config.Q_ID_CONFIDENCE in answers:
-            answers[self.config.Q_ID_CONFIDENCE] = self._normalize_difficulty(answers[self.config.Q_ID_CONFIDENCE])
+            answers[self.config.Q_ID_CONFIDENCE] = self._normalize_global_confidence(
+                answers[self.config.Q_ID_CONFIDENCE]
+            )
 
         return answers
 
@@ -131,13 +133,20 @@ class ResponseParser:
         return text
 
     def _normalize_confidence(self, text: str) -> str:
-        """标准化Confidence量表答案 (1-5)"""
+        """标准化 Type Confidence 量表答案 (1-5)"""
+        return self._normalize_confidence_scale(text, self.config.CONFIDENCE_LABELS)
+
+    def _normalize_confidence_scale(self, text: str, label_map: Dict[int, str]) -> str:
+        """通用的 1-5 置信度量表标准化"""
+        if text is None:
+            return text
+
         match = re.match(r'\s*([1-5])', text)
         if match:
             rating = int(match.group(1))
             rating = min(max(rating, 1), 5)
             remainder = text[match.end():].strip(" -:;")
-            label = self.config.CONFIDENCE_LABELS.get(rating, "")
+            label = label_map.get(rating, "")
 
             if remainder:
                 if label and label.lower() not in remainder.lower():
@@ -145,8 +154,13 @@ class ResponseParser:
                 else:
                     formatted_remainder = remainder
                 return f"{rating} - {formatted_remainder}"
-            else:
-                return f"{rating} - {label}" if label else f"{rating}"
+            return f"{rating} - {label}" if label else f"{rating}"
+
+        text_lower = text.lower()
+        for rating, label in label_map.items():
+            if label.lower() in text_lower:
+                return f"{rating} - {label}"
+
         return text
 
     def _normalize_type_classification(self, text: str) -> str:
@@ -162,42 +176,9 @@ class ResponseParser:
                 return f"Type {match.group()}"
         return text
 
-    def _normalize_difficulty(self, text: str) -> str:
-        """标准化难度等级答案"""
-        text_lower = text.lower()
-        difficulty_map = {
-            'very easy': '1 - Very Easy',
-            'easy': '2 - Easy',
-            'medium': '3 - Medium',
-            'hard': '4 - Hard',
-            'very hard': '5 - Very Hard',
-        }
-
-        # 先尝试直接匹配文本
-        if "very easy" in text_lower:
-            return "1 - Very Easy"
-        elif "very hard" in text_lower:
-            return "5 - Very Hard"
-        elif "easy" in text_lower:
-            return "2 - Easy"
-        elif "hard" in text_lower:
-            return "4 - Hard"
-        elif "medium" in text_lower:
-            return "3 - Medium"
-        else:
-            # 尝试提取数字
-            match = re.search(r'[1-5]', text)
-            if match:
-                num = match.group()
-                num_map = {
-                    '1': '1 - Very Easy',
-                    '2': '2 - Easy',
-                    '3': '3 - Medium',
-                    '4': '4 - Hard',
-                    '5': '5 - Very Hard'
-                }
-                return num_map.get(num, text)
-        return text
+    def _normalize_global_confidence(self, text: str) -> str:
+        """标准化全局置信度 (Q17)"""
+        return self._normalize_confidence_scale(text, self.config.CONFIDENCE_LABELS)
 
     @staticmethod
     def extract_confidence_value(text: Optional[str]) -> Optional[float]:

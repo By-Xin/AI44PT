@@ -151,8 +151,8 @@ class MajorityVoter:
                 # Type分类问题
                 normalized.append(self._normalize_type_for_vote(answer))
             elif q_num == self.config.Q_ID_CONFIDENCE:
-                # 难度等级问题
-                normalized.append(self._normalize_difficulty_for_vote(answer))
+                # 全局置信度问题
+                normalized.append(self._normalize_confidence_for_vote(answer))
             elif q_num in self.config.TYPE_CONFIDENCE_QUESTIONS:
                 # Type Confidence问题
                 normalized.append(self._normalize_confidence_for_vote(answer))
@@ -183,38 +183,27 @@ class MajorityVoter:
                 return f'Type {match.group()}'
         return answer
 
-    def _normalize_difficulty_for_vote(self, answer: str) -> str:
-        """标准化难度等级用于投票"""
-        answer_lower = answer.lower()
-        difficulty_map = {
-            'very easy': '1 - Very Easy',
-            'very hard': '5 - Very Hard',
-            'easy': '2 - Easy',
-            'hard': '4 - Hard',
-            'medium': '3 - Medium',
-        }
+    def _normalize_confidence_for_vote(self, answer: str) -> str:
+        """标准化置信度量表用于投票"""
+        labels = self.config.CONFIDENCE_LABELS
+        answer_str = answer or ""
 
-        for key, value in difficulty_map.items():
-            if key in answer_lower:
-                # 处理 "very easy" vs "easy" 等情况
-                if key == 'easy' and 'very' in answer_lower:
-                    continue
-                if key == 'hard' and 'very' in answer_lower:
-                    continue
-                return value
-
-        # 尝试提取数字
-        match = re.search(r'[1-5]', answer)
+        match = re.match(r'\s*([1-5])', answer_str)
         if match:
-            num = match.group()
-            num_map = {
-                '1': '1 - Very Easy',
-                '2': '2 - Easy',
-                '3': '3 - Medium',
-                '4': '4 - Hard',
-                '5': '5 - Very Hard'
-            }
-            return num_map.get(num, answer)
+            rating = int(match.group(1))
+            rating = min(max(rating, 1), 5)
+            remainder = answer_str[match.end():].strip(" -:;")
+            label = labels.get(rating, "")
+            if remainder:
+                if label and label.lower() not in remainder.lower():
+                    remainder = f"{label}; {remainder}"
+                return f"{rating} - {remainder}"
+            return f"{rating} - {label}" if label else f"{rating}"
+
+        lower_answer = answer_str.lower()
+        for rating, label in labels.items():
+            if label.lower() in lower_answer:
+                return f"{rating} - {label}"
 
         return answer
 
