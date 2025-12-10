@@ -163,11 +163,20 @@ class MajorityVoter:
 
     def _normalize_yes_no_for_vote(self, answer: str) -> str:
         """标准化Yes/No答案用于投票"""
-        answer_lower = answer.lower()
-        if 'yes' in answer_lower:
+        text = answer or ""
+        lowered = text.lower()
+
+        # 优先匹配开头的 yes/no 词
+        leading = re.match(r'\s*(yes|no)\b', lowered)
+        if leading:
+            return 'Yes' if leading.group(1) == 'yes' else 'No'
+
+        # 其次匹配独立词边界，避免匹配到 "not", "none" 等
+        if re.search(r'\byes\b', lowered):
             return 'Yes'
-        elif 'no' in answer_lower:
+        if re.search(r'\bno\b', lowered):
             return 'No'
+
         return answer
 
     def _normalize_type_for_vote(self, answer: str) -> str:
