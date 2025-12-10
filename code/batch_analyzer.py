@@ -160,8 +160,15 @@ class BatchAnalyzer:
         current_client = client or self.client
         current_model = model_name or (self.config.GEMINI_MODEL if self.config.LLM_PROVIDER == "gemini" else self.config.CLS_MODEL)
 
-        # 合并页面内容
+        # 合并页面内容并截断防止超长
         article_text = "\n\n".join([f"Page {p['page']}:\n{p['text']}" for p in article_pages])
+        max_chars = getattr(self.config, "ARTICLE_TEXT_MAX_CHARS", 50000)
+        if max_chars and len(article_text) > max_chars:
+            self.logger.warning(
+                "Article text length %s exceeds limit %s; truncating",
+                len(article_text), max_chars
+            )
+            article_text = article_text[:max_chars]
         coding_task_text = "\n\n".join([f"Section {p['page']}:\n{p['text']}" for p in coding_task_pages])
         executive_summary_text = "\n\n".join([f"Section {p['page']}:\n{p['text']}" for p in executive_summary_pages])
         main_body_text = "\n\n".join([f"Section {p['page']}:\n{p['text']}" for p in main_body_pages])

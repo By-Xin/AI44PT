@@ -72,17 +72,19 @@ class Config:
     
     # List of providers to run simultaneously
     # Options: "openai", "gemini"
-    ENABLED_PROVIDERS = ["openai", "gemini"]
-    
+    # ENABLED_PROVIDERS = ["openai", "gemini"]
+    ENABLED_PROVIDERS = ["gemini"]    
 
     # ==================== 批处理参数 ====================
     DEBUG_MODE = False  # 设为True将限制处理数量并降低模型开销
-    DEFAULT_AI_RUNS = 3  # 每篇文章的独立AI运行次数
+    DEFAULT_AI_RUNS = 2  # 每篇文章的独立AI运行次数
     ENABLE_SHUFFLE = False  # 是否启用问题随机排序
 
     # ==================== 并发/输出配置 ====================
     # 是否启用多线程并发调用（禁用时退回串行执行）
     ENABLE_CONCURRENT_CALLS = True
+    # 最大拼接的文章正文字符数（防止超长prompt导致截断/成本），None 表示不截断
+    ARTICLE_TEXT_MAX_CHARS = 120000
     # 同时在飞的文章数（0 或 None 表示不限制文章层）
     MAX_PARALLEL_ARTICLES = 4
     # 全局在飞的 API 调用上限（0 或 None 表示不限制）
