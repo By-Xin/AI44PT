@@ -1,6 +1,10 @@
 # macOS
 .DS_Store
 
+# Office temp/lock files
+~$*.xlsx
+~$*.xlsm
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
@@ -19,3 +23,7 @@ venv/
 
 # data
 /data/raw(READONLY)/
+
+# Pipeline raw responses (keep folder, ignore contents)
+/results/raw_responses/*
+!/results/raw_responses/.gitkeep
