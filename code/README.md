@@ -18,7 +18,7 @@ The canonical implementation now lives under `src/ai44pt/` (src-layout + package
 
 ```bash
 # Run the complete two-stage pipeline (raw generation + parsing)
-python -m ai44pt.cli --config config/full.yaml --stage full
+PYTHONPATH=src python -m ai44pt.cli --config config/full.yaml --stage full
 
 # Legacy entrypoint (shim)
 python code/pipeline_main.py --config config/full.yaml --stage full

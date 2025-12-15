@@ -16,17 +16,17 @@ This repository contains a two-stage workflow for running large batches of 4PT a
 
 ## Quick start
 
-The pipeline is controlled through the CLI (`python -m ai44pt.cli`). A legacy shim keeps `python code/pipeline_main.py` working.
+The canonical CLI lives at `src/ai44pt/cli.py` (run it with `PYTHONPATH=src python -m ai44pt.cli`). A legacy shim keeps `python code/pipeline_main.py` working without extra environment variables.
 
 ```bash
 # 1) Generate raw API responses and parse them immediately (default)
-python -m ai44pt.cli --config config/full.yaml --stage full
+PYTHONPATH=src python -m ai44pt.cli --config config/full.yaml --stage full
 
 # 2) Generate raw responses only (JSON + JSONL bundle)
-python -m ai44pt.cli --config config/raw.yaml --stage raw --raw-path data/outputs/raw_responses
+PYTHONPATH=src python -m ai44pt.cli --config config/raw.yaml --stage raw --raw-path data/outputs/raw_responses
 
 # 3) Parse an existing raw JSON bundle into Excel outputs
-python -m ai44pt.cli --config config/parse.yaml --stage parse --raw-path data/outputs/raw_responses/aggregated/raw_responses_20240101_120000.json
+PYTHONPATH=src python -m ai44pt.cli --config config/parse.yaml --stage parse --raw-path data/outputs/raw_responses/aggregated/raw_responses_20240101_120000.json
 ```
 
 Key optional flags:
