@@ -44,7 +44,7 @@ class Config:
     MAINBODY_MD = PROJECT_ROOT / "data" / "instructions" / "MainBody.md"
 
     # Excel和PDF路径配置
-    EXCEL_PATH = PROJECT_ROOT / "data" / "processed" / "JRGsamples" / "JRG_full.xlsx"
+    EXCEL_PATH = PROJECT_ROOT / "data" / "processed" / "JRGsamples" / "JRG_full_hard.xlsx"
     PDF_FOLDER = PROJECT_ROOT / "data" / "processed" / "JRGsamples"
 
     # 输出配置
@@ -59,7 +59,7 @@ class Config:
 
     # OpenAI API高级参数（适用于支持的模型）
     DEFAULT_REASONING_EFFORT = "high"  # "low", "medium", "high"
-    DEFAULT_TEXT_VERBOSITY = "medium"  # "low", "medium", "high"
+    DEFAULT_TEXT_VERBOSITY = "high"  # "low", "medium", "high"
 
     # ==================== Gemini配置 ====================
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -73,7 +73,7 @@ class Config:
     # List of providers to run simultaneously
     # Options: "openai", "gemini"
     # ENABLED_PROVIDERS = ["openai", "gemini"]
-    ENABLED_PROVIDERS = ["gemini"]    
+    ENABLED_PROVIDERS = ["openai"]
 
     # ==================== 批处理参数 ====================
     DEBUG_MODE = False  # 设为True将限制处理数量并降低模型开销
@@ -86,12 +86,12 @@ class Config:
     # 最大拼接的文章正文字符数（防止超长prompt导致截断/成本），None 表示不截断
     ARTICLE_TEXT_MAX_CHARS = 120000
     # 同时在飞的文章数（0 或 None 表示不限制文章层）
-    MAX_PARALLEL_ARTICLES = 4
+    MAX_PARALLEL_ARTICLES = 8
     # 全局在飞的 API 调用上限（0 或 None 表示不限制）
     MAX_TOTAL_CONCURRENT_CALLS = 8
     # 各 provider 单独的并发上限（0 或 None 表示不限制）
-    MAX_CONCURRENT_OPENAI = 4
-    MAX_CONCURRENT_GEMINI = 4
+    MAX_CONCURRENT_OPENAI = 6
+    MAX_CONCURRENT_GEMINI = 6
     # JSONL 追加写入时，每条都刷盘（确保崩溃损失最小，代价是更多 IO）
     JSONL_FLUSH_EACH_WRITE = True
 

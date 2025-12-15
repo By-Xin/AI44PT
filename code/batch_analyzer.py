@@ -674,6 +674,74 @@ class BatchAnalyzer:
         future_to_article: Dict = {}
         future_to_provider: Dict = {}
         total_tasks = 0
+        done_calls = 0
+        done_lock = threading.Lock()
+        progress_step = None
+
+        def handle_future_completion(future):
+            nonlocal done_calls, progress_step
+            record = None
+            try:
+                record = future.result()
+            except Exception as exc:
+                article_id = future_to_article.get(future, "unknown")
+                provider = future_to_provider.get(future, "unknown")
+                ts = self._get_timestamp()
+                article_meta = {
+                    "article_id": article_id,
+                    "title": "",
+                    "index": None,
+                    "total": article_count,
+                    "pdf_path": None,
+                    "ai_runs": ai_runs,
+                    "provider": provider,
+                }
+                record = self._build_raw_record(
+                    article_meta,
+                    run_index=1,
+                    prompt=None,
+                    response_text=None,
+                    api_timestamp=ts,
+                    status="error",
+                    error_message=str(exc),
+                    error_type="api_error",
+                    model_name=self.config.CLS_MODEL if provider == "openai" else self.config.GEMINI_MODEL,
+                    provider=provider
+                )
+
+            append_record(record)
+            update_stats_from_record(record)
+
+            article_id = future_to_article.get(future)
+            if article_id is not None:
+                with article_lock:
+                    article_pending_tasks[article_id] -= 1
+                    if article_pending_tasks[article_id] <= 0:
+                        article_pending_tasks.pop(article_id, None)
+                        if article_semaphore:
+                            article_semaphore.release()
+                        self.logger.info("  ✅ Completed article #%s", article_id)
+
+            with done_lock:
+                done_calls += 1
+                if total_tasks:
+                    if progress_step is None:
+                        progress_step = max(1, total_tasks // 10)
+                    if done_calls % progress_step == 0 or done_calls == total_tasks:
+                        with stats_lock:
+                            s_success = generation_stats.get('success', 0)
+                            s_err = generation_stats.get('analysis_error', 0)
+                            s_pdf_missing = generation_stats.get('pdf_not_found', 0)
+                            s_pdf_err = generation_stats.get('pdf_error', 0)
+                        self.logger.info(
+                            "  ↪️ Progress: %s/%s calls | success %s, errors %s, pdf_missing %s, pdf_read_err %s",
+                            done_calls,
+                            total_tasks,
+                            s_success,
+                            s_err,
+                            s_pdf_missing,
+                            s_pdf_err
+                        )
 
         default_workers = max(4, (os.cpu_count() or 2) * 2)
         if concurrency_enabled:
@@ -808,6 +876,7 @@ class BatchAnalyzer:
                     futures.append(future)
                     future_to_article[future] = str(article_id)
                     future_to_provider[future] = provider
+                    future.add_done_callback(handle_future_completion)
                     total_tasks += 1
 
             # 如果没有任何任务被提交，需要释放文章并发槽位
@@ -815,69 +884,6 @@ class BatchAnalyzer:
                 pending = article_pending_tasks.get(str(article_id), 0)
             if pending == 0 and article_semaphore:
                 article_semaphore.release()
-
-        done_calls = 0
-        for future in as_completed(futures):
-            record = None
-            try:
-                record = future.result()
-            except Exception as exc:
-                article_id = future_to_article.get(future, "unknown")
-                provider = future_to_provider.get(future, "unknown")
-                ts = self._get_timestamp()
-                article_meta = {
-                    "article_id": article_id,
-                    "title": "",
-                    "index": None,
-                    "total": article_count,
-                    "pdf_path": None,
-                    "ai_runs": ai_runs,
-                    "provider": provider,
-                }
-                record = self._build_raw_record(
-                    article_meta,
-                    run_index=1,
-                    prompt=None,
-                    response_text=None,
-                    api_timestamp=ts,
-                    status="error",
-                    error_message=str(exc),
-                    error_type="api_error",
-                    model_name=self.config.CLS_MODEL if provider == "openai" else self.config.GEMINI_MODEL,
-                    provider=provider
-                )
-
-            append_record(record)
-            update_stats_from_record(record)
-            done_calls += 1
-
-            article_id = future_to_article.get(future)
-            if article_id is not None:
-                with article_lock:
-                    article_pending_tasks[article_id] -= 1
-                    if article_pending_tasks[article_id] <= 0:
-                        article_pending_tasks.pop(article_id, None)
-                        if article_semaphore:
-                            article_semaphore.release()
-                        self.logger.info("  ✅ Completed article #%s", article_id)
-
-            if total_tasks:
-                progress_step = max(1, total_tasks // 10)
-                if done_calls % progress_step == 0 or done_calls == total_tasks:
-                    with stats_lock:
-                        s_success = generation_stats.get('success', 0)
-                        s_err = generation_stats.get('analysis_error', 0)
-                        s_pdf_missing = generation_stats.get('pdf_not_found', 0)
-                        s_pdf_err = generation_stats.get('pdf_error', 0)
-                    self.logger.info(
-                        "  ↪️ Progress: %s/%s calls | success %s, errors %s, pdf_missing %s, pdf_read_err %s",
-                        done_calls,
-                        total_tasks,
-                        s_success,
-                        s_err,
-                        s_pdf_missing,
-                        s_pdf_err
-                    )
 
         executor.shutdown(wait=True)
 
