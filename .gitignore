@@ -24,6 +24,10 @@ venv/
 # data
 /data/raw(READONLY)/
 
-# Pipeline raw responses (keep folder, ignore contents)
+# Pipeline outputs (keep folders, ignore contents)
+/data/outputs/*
+!/data/outputs/.gitkeep
+!/data/outputs/**/.gitkeep
+
 /results/raw_responses/*
 !/results/raw_responses/.gitkeep

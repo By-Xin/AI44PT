@@ -1,25 +1,27 @@
-# Code Module Overview
+# Legacy Compatibility Layer (`code/`)
 
-This directory contains the modular 4PT analysis system, organized into specialized modules following data science best practices.
+This directory is kept for backward compatibility (e.g. `python code/pipeline_main.py` and legacy imports like `from config import Config`).
 
-## Module Structure (7 files)
+The canonical implementation now lives under `src/ai44pt/` (src-layout + package imports).
 
-### Core Modules
-- **`config.py`** (12K) - Complete configuration including paths, API keys, model settings, and all batch parameters
-- **`document_reader.py`** (2.2K) - PDF and Markdown document reading
-- **`__init__.py`** (909B) - Package initialization
+## Canonical Module Structure
 
-### Analysis Pipeline Modules
-- **`response_parser.py`** (7.7K) - AI response parsing and normalization
-- **`voting.py`** (13K) - Majority voting, consensus analysis, decision tree classification
-- **`batch_analyzer.py`** (21K) - Main batch processing orchestrator
-- **`pipeline_main.py`** (3.0K) - Command-line entry point for batch analysis
+- `src/ai44pt/config.py` - YAML-driven configuration loader (`config/*.yaml`)
+- `src/ai44pt/cli.py` - CLI entrypoint
+- `src/ai44pt/pipeline/batch_analyzer.py` - Orchestrator
+- `src/ai44pt/pipeline/voting.py` - Majority vote & consensus logic
+- `src/ai44pt/handlers/*` - I/O + parsing + reporting
+- `src/ai44pt/llm/*` - LLM clients
+- `src/ai44pt/prompt_engineering/*` - Prompt templates & rendering
 
 ## Quick Start
 
 ```bash
 # Run the complete two-stage pipeline (raw generation + parsing)
-python code/pipeline_main.py --stage full
+python -m ai44pt.cli --config config/full.yaml --stage full
+
+# Legacy entrypoint (shim)
+python code/pipeline_main.py --config config/full.yaml --stage full
 
 # (Optional) Stage 1: generate raw JSON bundle (per-run JSON + aggregated JSON)
 python code/pipeline_main.py --stage raw --raw-path results/raw_responses/aggregated/raw_responses_my_run.json
@@ -41,39 +43,14 @@ python code/pipeline_main.py --stage parse --raw-path results/raw_responses/aggr
 # Override the Excel source if needed
 python code/pipeline_main.py --stage full --excel-path /path/to/custom.xlsx
 
-# Toggle debug mode (limits to 2 articles, lowers effort)
-python code/pipeline_main.py --stage raw --debug
+# Toggle debug mode via YAML (recommended): set `batch.debug_mode: true` in a dedicated YAML profile.
 ```
 
 ## Configuration
 
-All configuration is now in a single file: `config.py`
+Configuration is YAML-driven under `config/` (single source of truth).
 
-**Key parameters to adjust:**
-- `DEBUG_MODE = True` - Limits to 2 articles for testing
-- `DEFAULT_AI_RUNS = 3` - Number of independent AI runs per article (parse stage uses this unless you pass `--parse-all-runs`)
-- `ENABLE_MAJORITY_VOTE = True` - Enable consensus analysis
-- `EXCEL_PATH` - Path to input Excel file
-- `PDF_FOLDER` - Path to PDF files directory
-- `TEMPERATURE = 0.1` - AI randomness (0.0-1.0)
-- `DEFAULT_REASONING_EFFORT` - "low", "medium", or "high"
-- `DEFAULT_TEXT_VERBOSITY` - "low", "medium", or "high"
-- `RAW_OUTPUT_DIR` - Base directory for raw `.json` records (per-run files + aggregated exports)
-- `--debug` (CLI flag) - Forces debug mode without editing `config.py`
-
-## Module Dependencies
-
-```
-pipeline_main.py
-    └── BatchAnalyzer (batch_analyzer.py)
-            ├── Config (config.py)
-            ├── DocumentReader (document_reader.py)
-            ├── ResponseParser (response_parser.py)
-            └── Voting modules (voting.py)
-                    ├── MajorityVoter
-                    ├── ConsensusAnalyzer
-                    └── DecisionTreeClassifier
-```
+Start with `config/base.yaml` and create profile YAMLs using `extends`.
 
 ## Design Principles
 

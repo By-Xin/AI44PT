@@ -1,14 +1,13 @@
-from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any
+from __future__ import annotations
 
-class BaseLLMClient(ABC):
-    @abstractmethod
-    def generate_response(
-        self, 
-        system_prompt: str, 
-        user_prompt: str, 
-        temperature: float,
-        reasoning_effort: str = "medium",
-        text_verbosity: str = "low"
-    ) -> str:
-        pass
+import sys
+from pathlib import Path
+
+SRC_DIR = (Path(__file__).resolve().parents[2] / "src").as_posix()
+if SRC_DIR not in sys.path:
+    sys.path.insert(0, SRC_DIR)
+
+from ai44pt.llm.base_client import BaseLLMClient  # noqa: F401
+
+__all__ = ["BaseLLMClient"]
+

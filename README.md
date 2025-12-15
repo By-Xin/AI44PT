@@ -12,21 +12,21 @@ This repository contains a two-stage workflow for running large batches of 4PT a
    ```bash
    pip install -r requirements.txt
    ```
-3. Provide credentials and paths in `.env` (at least `OPENAI_API_KEY`). See `code/config.py` for all configurable values.
+3. Provide credentials in `.env` (at least `OPENAI_API_KEY`). Runtime configuration lives in YAML under `config/` (see `config/base.yaml`).
 
 ## Quick start
 
-The pipeline is controlled through `code/pipeline_main.py`. Three modes are available:
+The pipeline is controlled through the CLI (`python -m ai44pt.cli`). A legacy shim keeps `python code/pipeline_main.py` working.
 
 ```bash
 # 1) Generate raw API responses and parse them immediately (default)
-python code/pipeline_main.py --stage full
+python -m ai44pt.cli --config config/full.yaml --stage full
 
 # 2) Generate raw responses only (JSON + JSONL bundle)
-python code/pipeline_main.py --stage raw --raw-path results/raw_responses
+python -m ai44pt.cli --config config/raw.yaml --stage raw --raw-path data/outputs/raw_responses
 
 # 3) Parse an existing raw JSON bundle into Excel outputs
-python code/pipeline_main.py --stage parse --raw-path results/raw_responses/aggregated/raw_responses_20240101_120000.json
+python -m ai44pt.cli --config config/parse.yaml --stage parse --raw-path data/outputs/raw_responses/aggregated/raw_responses_20240101_120000.json
 ```
 
 Key optional flags:
@@ -36,11 +36,12 @@ Key optional flags:
 - `--skip-bad` – ignore malformed JSON files during batch parsing.
 - `--parse-all-runs` – when parsing, include every AI run found in the raw JSON instead of truncating to the configured `ai_runs`.
 
-> 💡 When running `--stage raw` or `--stage full`, omit `--raw-path` to use the timestamped default output directory from `config.py`.
+> 💡 When running `--stage raw` or `--stage full`, omit `--raw-path` to use the default output directories from the selected YAML config.
+> 💡 Prefer switching configuration by selecting a different YAML file via `--config` (the YAML files support `extends`).
 
 ## Output files
 
-Parsing always emits a timestamped Excel workbook under `results/analysis/`. The new Excel reporter (powered by `code/reporting.py`) generates:
+Parsing always emits a timestamped Excel workbook under `data/outputs/analysis/`. The Excel reporter generates:
 
 - **Summary** – headline metrics (coverage, accuracy, ambiguous rate, averages) alongside status/consensus breakdowns, a terminology glossary, and a colour legend.
 - **Confusion_Matrix** – raw/normalised four-type confusion tables with precision, recall, F1, and top error pairs.
@@ -76,8 +77,8 @@ CSV and JSON exports remain available: pass `--stage parse --raw-path ... --debu
 
 ## Configuration tips
 
-- Adjust default paths, AI settings, and toggles inside `code/config.py`.
-- `Config.DEBUG_MODE = True` limits the run to two articles and drops reasoning effort for cheaper iterations.
+- Adjust default paths, AI settings, prompts, and toggles inside `config/base.yaml` (or create a new YAML that `extends` it).
+- Set `batch.debug_mode: true` to limit runs to two articles and drop reasoning effort for cheaper iterations.
 - The parser expects the Excel workbook columns used in the original template (`#`, `source`, `Title of the Paper`, etc.).
 - PDFs referenced in the Excel sheet should live under `data/processed/` unless you override `PDF_FOLDER`.
 
