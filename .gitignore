@@ -27,7 +27,10 @@ venv/
 # Pipeline outputs (keep folders, ignore contents)
 /data/outputs/*
 !/data/outputs/.gitkeep
-!/data/outputs/**/.gitkeep
+!/data/outputs/analysis/
+!/data/outputs/raw_responses/
+!/data/outputs/analysis/.gitkeep
+!/data/outputs/raw_responses/.gitkeep
 
 /results/raw_responses/*
 !/results/raw_responses/.gitkeep
