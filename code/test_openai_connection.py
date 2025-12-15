@@ -68,12 +68,5 @@ def test_openai():
         logger.exception("❌ Error during generation: %s", e)
         return
 
-    if hasattr(response, "headers"):
-        logger.info("Rate Limit Info:")
-        logger.info("  Requests limit: %s", response.headers.get("x-ratelimit-limit-requests"))
-        logger.info("  Tokens limit: %s", response.headers.get("x-ratelimit-limit-tokens"))
-        logger.info("  Remaining requests: %s", response.headers.get("x-ratelimit-remaining-requests"))
-
-
 if __name__ == "__main__":
     test_openai()
