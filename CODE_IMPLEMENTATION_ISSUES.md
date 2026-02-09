@@ -9,6 +9,29 @@ Scope: `code/` only (excludes `hf_demo/`, excludes doc inconsistency items)
 - `P1`: High-risk implementation issue (stability/data quality/recovery risk)
 - `P2`: Incomplete or consistency issue (non-blocking but should be fixed)
 
+## Resolution Status (2026-02-09)
+
+| ID | Priority | Status | Notes |
+|---|---|---|---|
+| `CFG-001` | P0 | ✅ Resolved | Added stage-aware config validation for `raw/parse/full`. |
+| `CFG-002` | P1 | ✅ Resolved | Prompt guide files now validated only when generation is required. |
+| `CFG-003` | P1 | ✅ Resolved | LLM clients changed to lazy initialization; parse path no longer eagerly initializes clients. |
+| `PRM-001` | P1 | ✅ Verified already fixed | `build_user_prompt(...)` already interpolates coding task / executive summary / main body texts. |
+| `PRM-002` | P1 | ✅ Resolved | Removed second hard `[:50000]` truncation; `ARTICLE_TEXT_MAX_CHARS` is now single source of truth. |
+| `RAW-001` | P0 | ✅ Verified already fixed | Callback mapping is assigned before `add_done_callback(...)`. |
+| `RAW-002` | P1 | ✅ Resolved | Added per-article PDF read exception handling and `PDF_READ_ERROR` fallback rows. |
+| `RAW-003` | P1 | ✅ Resolved | Per-call raw JSON now saved under current run directory instead of global root. |
+| `PAR-001` | P1 | ✅ Resolved | CLI now accepts `.jsonl` parse inputs. |
+| `PAR-002` | P0 | ✅ Resolved | Removed unsafe directory-wide loose JSON merge fallback; parse targets now require aggregated artifacts. |
+| `PAR-003` | P1 | ✅ Resolved | Directory loader now reads both `.json` and `.jsonl` and deduplicates records deterministically. |
+| `PAR-004` | P1 | ✅ Resolved | Multi-target parse now returns non-zero on hard/empty failures (unless explicitly skipped). |
+| `PAR-005` | P2 | ✅ Resolved | Missing-raw placeholders now honor provider × run cardinality. |
+| `VOT-001` | P0 | ✅ Resolved | Split semantics: run consensus remains in `AI run agreement`; intra-row consistency moved to `Signal consistency`. |
+| `VOT-002` | P0 | ✅ Resolved | Implemented per-article consensus aggregation and populated `Human vs Consensus`. |
+| `REP-001` | P0 | ✅ Resolved | Standardized vote text to `Type N:count`; parser now supports legacy `count*Type N` too. |
+| `REP-002` | P1 | ✅ Resolved | Status classification now reads immutable run-consensus semantics (no overwrite path). |
+| `REP-003` | P2 | ✅ Resolved | Implemented `extent_avgs` as per-type support averages (`Yes=1, No=0`). |
+
 ---
 
 ## 1) Configuration & Entry Flow
@@ -148,4 +171,3 @@ Scope: `code/` only (excludes `hf_demo/`, excludes doc inconsistency items)
 1. **P0 batch 1**: `CFG-001`, `RAW-001`, `PAR-002`, `VOT-001`, `VOT-002`, `REP-001`  
 2. **P1 batch 2**: `CFG-002`, `CFG-003`, `PRM-001`, `PRM-002`, `RAW-002`, `RAW-003`, `PAR-001`, `PAR-003`, `PAR-004`, `REP-002`  
 3. **P2 batch 3**: `PAR-005`, `REP-003`
-
