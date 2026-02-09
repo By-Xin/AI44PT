@@ -2,6 +2,12 @@
 
 This repository contains a two-stage workflow for running large batches of 4PT article evaluations. It reads human-labelled metadata from Excel, replays saved AI responses, and produces a richly formatted workbook that highlights agreement across runs.
 
+## Current priority (bug-fix phase)
+
+- Phase 1 focus is implementation bug fixing and pipeline hardening.
+- The canonical bug backlog is maintained in `CODE_IMPLEMENTATION_ISSUES.md`.
+- During this phase, prioritize `P0`/`P1` fixes over documentation polishing or feature expansion.
+
 ## Environment setup
 
 1. Create/activate the project environment (the team standard uses Conda):

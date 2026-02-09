@@ -4,6 +4,20 @@
 > **Current Version**: 3.0.0 (Modular Batch Analysis Architecture)  
 > **Major Refactoring**: October 12, 2025 (Commit: cd98df1)
 
+## Current Work Priority (2026-02-09)
+
+### 🚧 Phase 1: Bug-Fix Sprint
+
+The immediate project focus is implementation bug fixing and pipeline hardening.
+
+Execution order:
+1. Fix `P0` issues first (blocking/correctness-critical)
+2. Then fix `P1` issues (high-risk stability/data-quality)
+3. Defer feature work and broad doc rewrites until core bugs are stabilized
+
+Canonical tracker for this sprint:
+- `CODE_IMPLEMENTATION_ISSUES.md`
+
 ## Environment Setup
 
 Activate the project environment and install dependencies:
@@ -328,6 +342,7 @@ Visit: https://huggingface.co/spaces/BYLEON/4PT
 
 The repository includes comprehensive documentation for different purposes:
 
+- **[CODE_IMPLEMENTATION_ISSUES.md](CODE_IMPLEMENTATION_ISSUES.md)** - Active bug-fix backlog with `P0/P1/P2` priorities and code-level evidence (current sprint source of truth)
 - **[AGENTS.md](AGENTS.md)** (this file) - Complete repository guidelines for AI agents and developers
 - **[REFACTORING_COMPLETE.md](REFACTORING_COMPLETE.md)** - Detailed refactoring report and statistics (Oct 12, 2025)
 - **[CONFIG_MERGE_SUMMARY.md](CONFIG_MERGE_SUMMARY.md)** - Configuration merge details and migration guide

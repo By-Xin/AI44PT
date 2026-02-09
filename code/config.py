@@ -44,7 +44,7 @@ class Config:
     MAINBODY_MD = PROJECT_ROOT / "data" / "instructions" / "MainBody.md"
 
     # Excel和PDF路径配置
-    EXCEL_PATH = PROJECT_ROOT / "data" / "processed" / "JRGsamples" / "JRG_full_hard.xlsx"
+    EXCEL_PATH = PROJECT_ROOT / "data" / "processed" / "JRGsamples" / "JRG_full.xlsx"
     PDF_FOLDER = PROJECT_ROOT / "data" / "processed" / "JRGsamples"
 
     # 输出配置
@@ -388,54 +388,59 @@ class Config:
         cls.RAW_OUTPUT_DIR.mkdir(exist_ok=True)
 
     @classmethod
-    def validate(cls) -> bool:
+    def validate(cls, stage: str = "full") -> bool:
         """
-        验证必要的配置是否存在
+        按处理阶段验证必要配置
 
         Returns:
             bool: 配置是否有效
         """
         logger = logging.getLogger(__name__)
+        stage_norm = (stage or "full").strip().lower()
+        if stage_norm not in {"raw", "parse", "full"}:
+            logger.warning("Unknown stage '%s'; fallback to full validation", stage)
+            stage_norm = "full"
 
-        # Validate all enabled providers
-        if "openai" in cls.ENABLED_PROVIDERS:
-            if not cls.OPENAI_API_KEY:
+        needs_generation = stage_norm in {"raw", "full"}
+        needs_parse = stage_norm in {"parse", "full"}
+
+        if needs_generation:
+            # Validate all enabled providers
+            if "openai" in cls.ENABLED_PROVIDERS and not cls.OPENAI_API_KEY:
                 logger.error("OPENAI_API_KEY not found in environment. Please set it in .env file.")
                 return False
-        
-        if "gemini" in cls.ENABLED_PROVIDERS:
-            if not cls.GEMINI_API_KEY:
+
+            if "gemini" in cls.ENABLED_PROVIDERS and not cls.GEMINI_API_KEY:
                 logger.error("GEMINI_API_KEY not found in environment. Please set it in .env file.")
                 return False
 
-        # Legacy validation for single provider if ENABLED_PROVIDERS is not used/empty (fallback)
-        if not cls.ENABLED_PROVIDERS:
-            if cls.LLM_PROVIDER == "openai":
-                if not cls.OPENAI_API_KEY:
+            # Legacy validation for single provider if ENABLED_PROVIDERS is empty (fallback)
+            if not cls.ENABLED_PROVIDERS:
+                if cls.LLM_PROVIDER == "openai" and not cls.OPENAI_API_KEY:
                     logger.error("OPENAI_API_KEY not found in environment")
                     return False
-            elif cls.LLM_PROVIDER == "gemini":
-                if not cls.GEMINI_API_KEY:
+                if cls.LLM_PROVIDER == "gemini" and not cls.GEMINI_API_KEY:
                     logger.error("GEMINI_API_KEY not found in environment")
                     return False
 
-        if not cls.CODINGTASK_MD.exists():
-            logger.error("Coding Task not found at %s", cls.CODINGTASK_MD)
-            return False
+            if not cls.CODINGTASK_MD.exists():
+                logger.error("Coding Task not found at %s", cls.CODINGTASK_MD)
+                return False
 
-        if not cls.EXECUTIVESUMMARY_MD.exists():
-            logger.error("Executive Summary not found at %s", cls.EXECUTIVESUMMARY_MD)
-            return False
+            if not cls.EXECUTIVESUMMARY_MD.exists():
+                logger.error("Executive Summary not found at %s", cls.EXECUTIVESUMMARY_MD)
+                return False
 
-        if not cls.MAINBODY_MD.exists():
-            logger.error("Main Body not found at %s", cls.MAINBODY_MD)
-            return False
+            if not cls.MAINBODY_MD.exists():
+                logger.error("Main Body not found at %s", cls.MAINBODY_MD)
+                return False
 
-        if not cls.EXCEL_PATH.exists():
-            logger.error("Excel file not found at %s", cls.EXCEL_PATH)
-            return False
+        if needs_parse or needs_generation:
+            if not cls.EXCEL_PATH.exists():
+                logger.error("Excel file not found at %s", cls.EXCEL_PATH)
+                return False
 
-        if not cls.PDF_FOLDER.exists():
+        if needs_generation and not cls.PDF_FOLDER.exists():
             logger.error("PDF folder not found at %s", cls.PDF_FOLDER)
             return False
 

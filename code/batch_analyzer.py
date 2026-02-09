@@ -30,14 +30,14 @@ from reporting import (
     AI_SUCCESS_RATE_COLUMN,
     Q15_VOTE_COUNTS_COLUMN,
 )
-from llm_clients.openai_client import OpenAIClient
-from llm_clients.gemini_client import GeminiClient
 
 
 class BatchAnalyzer:
     """批量分析协调器"""
 
     AI_AGREEMENT_COL = 'AI run agreement'
+    RUN_CONSENSUS_COL = AI_AGREEMENT_COL
+    SIGNAL_CONSISTENCY_COL = 'Signal consistency'
     HUMAN_VS_AI_COL = 'Human vs AI Match'
     TYPE_SUMMARY_COL = 'Type summary'
     HUMAN_VS_CONSENSUS_COL = 'Human vs Consensus'
@@ -60,54 +60,11 @@ class BatchAnalyzer:
         self.config = config or Config()
         self.config.setup_directories()
 
-        # 初始化组件
+        # 运行时组件（LLM 客户端按需初始化，避免 parse 阶段依赖在线配置）
         self.clients = {}
-        available_providers = []
-        
-        # Initialize all enabled clients
-        if "openai" in self.config.ENABLED_PROVIDERS:
-            self.clients["openai"] = OpenAIClient(
-                api_key=self.config.OPENAI_API_KEY,
-                model=self.config.CLS_MODEL
-            )
-            available_providers.append("openai")
-            
-        if "gemini" in self.config.ENABLED_PROVIDERS:
-            try:
-                self.clients["gemini"] = GeminiClient(
-                    api_key=self.config.GEMINI_API_KEY,
-                    model=self.config.GEMINI_MODEL
-                )
-                available_providers.append("gemini")
-            except ImportError as exc:
-                self.logger.warning(
-                    "Gemini provider disabled (dependency missing): %s. "
-                    "Install google-generativeai or remove 'gemini' from ENABLED_PROVIDERS.",
-                    exc
-                )
-            
-        # Fallback/Legacy support if clients dict is empty but LLM_PROVIDER is set
-        if not self.clients:
-            if self.config.LLM_PROVIDER == "gemini":
-                try:
-                    self.clients["gemini"] = GeminiClient(
-                        api_key=self.config.GEMINI_API_KEY,
-                        model=self.config.GEMINI_MODEL
-                    )
-                    available_providers.append("gemini")
-                except ImportError as exc:
-                    self.logger.error("Gemini not available and no other provider configured: %s", exc)
-                    raise
-            else:
-                self.clients["openai"] = OpenAIClient(
-                    api_key=self.config.OPENAI_API_KEY,
-                    model=self.config.CLS_MODEL
-                )
-                available_providers.append("openai")
-            
-        # Set default client for legacy calls (optional)
-        self.client = self.clients.get(self.config.LLM_PROVIDER) or list(self.clients.values())[0]
-        self.available_providers = available_providers
+        self.available_providers: List[str] = []
+        self.client = None
+        self.current_raw_run_dir: Optional[Path] = None
             
         self.document_reader = DocumentReader()
         self.parser = ResponseParser(self.config)
@@ -124,6 +81,63 @@ class BatchAnalyzer:
         self.last_raw_source_path: Optional[Path] = None
         self.last_parse_run_counts: Dict[str, int] = {}
 
+    def _initialize_clients(self):
+        """按需初始化已启用的 LLM 客户端。"""
+        if self.clients:
+            return
+
+        enabled_providers = list(self.config.ENABLED_PROVIDERS or [])
+        if not enabled_providers:
+            enabled_providers = [self.config.LLM_PROVIDER]
+
+        for provider in enabled_providers:
+            provider = (provider or "").strip().lower()
+            if provider == "openai":
+                if not self.config.OPENAI_API_KEY:
+                    self.logger.warning("OpenAI provider skipped: OPENAI_API_KEY is missing.")
+                    continue
+                from llm_clients.openai_client import OpenAIClient
+                self.clients["openai"] = OpenAIClient(
+                    api_key=self.config.OPENAI_API_KEY,
+                    model=self.config.CLS_MODEL
+                )
+                self.available_providers.append("openai")
+                continue
+
+            if provider == "gemini":
+                if not self.config.GEMINI_API_KEY:
+                    self.logger.warning("Gemini provider skipped: GEMINI_API_KEY is missing.")
+                    continue
+                try:
+                    from llm_clients.gemini_client import GeminiClient
+                    self.clients["gemini"] = GeminiClient(
+                        api_key=self.config.GEMINI_API_KEY,
+                        model=self.config.GEMINI_MODEL
+                    )
+                    self.available_providers.append("gemini")
+                except ImportError as exc:
+                    self.logger.warning(
+                        "Gemini provider disabled (dependency missing): %s. "
+                        "Install google-generativeai or remove 'gemini' from ENABLED_PROVIDERS.",
+                        exc
+                    )
+                continue
+
+            self.logger.warning("Unsupported provider '%s'; skipping.", provider)
+
+        if not self.clients:
+            raise RuntimeError(
+                "No LLM clients initialized. Check provider keys/dependencies or ENABLED_PROVIDERS."
+            )
+
+        self.client = self.clients.get(self.config.LLM_PROVIDER) or list(self.clients.values())[0]
+
+    def _ensure_clients_initialized(self):
+        if not self.clients:
+            self._initialize_clients()
+        if self.client is None and self.clients:
+            self.client = self.clients.get(self.config.LLM_PROVIDER) or list(self.clients.values())[0]
+
     def analyze_single_article(
         self,
         article_pages: List[Dict],
@@ -135,7 +149,7 @@ class BatchAnalyzer:
         client=None,
         model_name: str = None,
         provider: Optional[str] = None
-    ) -> Tuple[Optional[Dict], str]:
+    ) -> Tuple[Optional[str], str, Dict]:
         """
         分析单篇文章（单次运行）
 
@@ -156,13 +170,16 @@ class BatchAnalyzer:
         if not article_pages:
             return None, self._get_timestamp()
             
-        # Use provided client or default
-        current_client = client or self.client
+        # Use provided client or lazy-initialized default client
+        current_client = client
+        if current_client is None:
+            self._ensure_clients_initialized()
+            current_client = self.client
         current_model = model_name or (self.config.GEMINI_MODEL if self.config.LLM_PROVIDER == "gemini" else self.config.CLS_MODEL)
 
         # 合并页面内容并截断防止超长
         article_text = "\n\n".join([f"Page {p['page']}:\n{p['text']}" for p in article_pages])
-        max_chars = getattr(self.config, "ARTICLE_TEXT_MAX_CHARS", 50000)
+        max_chars = getattr(self.config, "ARTICLE_TEXT_MAX_CHARS", None)
         if max_chars and len(article_text) > max_chars:
             self.logger.warning(
                 "Article text length %s exceeds limit %s; truncating",
@@ -179,7 +196,7 @@ class BatchAnalyzer:
             coding_task_text, 
             executive_summary_text, 
             main_body_text, 
-            article_text[:50000], 
+            article_text,
             question_order
         )
         
@@ -420,7 +437,9 @@ class BatchAnalyzer:
             safe_model = re.sub(r'[^A-Za-z0-9_-]+', '', model_name or "unknown")
             safe_provider = re.sub(r'[^A-Za-z0-9_-]+', '', provider or "provider")
             file_name = f"{safe_article_id}_{safe_provider}_{safe_model}_run{run_index}_{api_timestamp}_{status}.json"
-            file_path = self.config.RAW_OUTPUT_DIR / file_name
+            run_dir = self.current_raw_run_dir or self.config.RAW_OUTPUT_DIR
+            run_dir.mkdir(parents=True, exist_ok=True)
+            file_path = run_dir / file_name
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(record, f, ensure_ascii=False, indent=2)
         except Exception as e:
@@ -476,16 +495,13 @@ class BatchAnalyzer:
             json_files = sorted(source_path.glob("*.json"))
             jsonl_files = sorted(source_path.glob("*.jsonl"))
 
-            if json_files:
+            if not json_files and not jsonl_files:
+                self.logger.error("❌ No JSON/JSONL files found in directory: %s", source_path)
+            else:
                 for json_file in json_files:
                     load_json_file(json_file)
-            elif jsonl_files:
                 for jsonl_file in jsonl_files:
                     load_jsonl_file(jsonl_file)
-            else:
-                self.logger.error("❌ No JSON/JSONL files found in directory: %s", source_path)
-
-            return records
 
         suffix = source_path.suffix.lower()
         if suffix == ".json":
@@ -494,7 +510,27 @@ class BatchAnalyzer:
             load_jsonl_file(source_path)
         else:
             self.logger.error("❌ Unsupported raw data format: %s", source_path)
-        return records
+
+        if not records:
+            return records
+
+        deduped_records: List[Dict] = []
+        seen = set()
+        for record in records:
+            try:
+                key = json.dumps(record, sort_keys=True, ensure_ascii=False, default=str)
+            except (TypeError, ValueError):
+                key = repr(record)
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped_records.append(record)
+
+        duplicates_removed = len(records) - len(deduped_records)
+        if duplicates_removed > 0:
+            self.logger.info("Deduplicated raw records: removed %s duplicate entries", duplicates_removed)
+
+        return deduped_records
 
     def generate_raw_responses(
         self,
@@ -544,12 +580,16 @@ class BatchAnalyzer:
 
         run_dir = base_dir / run_dir_name
         run_dir.mkdir(parents=True, exist_ok=True)
+        self.current_raw_run_dir = run_dir
         final_output_path = run_dir / final_filename
         streaming_output_path = final_output_path.with_suffix(".jsonl")
 
         self.logger.info("📝 Aggregated raw (array) will be written to: %s", final_output_path)
         self.logger.info("🧮 Streaming JSONL (append per call) will be written to: %s", streaming_output_path)
         streaming_output_path.write_text("", encoding="utf-8")
+
+        # raw/full 阶段才需要客户端；这里按需初始化
+        self._ensure_clients_initialized()
 
         # 预加载Codebook
         coding_task_pages = self.document_reader.read_markdown(str(self.config.CODINGTASK_MD))
@@ -809,7 +849,12 @@ class BatchAnalyzer:
             generation_stats['pdf_found'] += 1
             self.logger.info("  📄 Using PDF: %s", os.path.basename(pdf_path))
 
-            article_pages = self.document_reader.read_pdf(pdf_path)
+            try:
+                article_pages = self.document_reader.read_pdf(pdf_path)
+            except Exception as exc:
+                self.logger.warning("  ⚠️ Exception while reading PDF: %s; recording error runs", exc)
+                article_pages = []
+
             if not article_pages:
                 self.logger.warning("  ⚠️ Failed to read PDF; recording error runs")
                 generation_stats['pdf_read_error'] += 1
@@ -898,6 +943,7 @@ class BatchAnalyzer:
         self.logger.info("  📄 Streaming JSONL: %s", streaming_output_path)
 
         self.last_raw_source_path = final_output_path
+        self.current_raw_run_dir = None
         return final_output_path
 
     def parse_raw_responses(
@@ -992,6 +1038,7 @@ class BatchAnalyzer:
             human_row['source'] = 'human'
             human_row['Analysis_Status'] = 'HUMAN_ORIGINAL'
             human_row[self.AI_AGREEMENT_COL] = ''
+            human_row[self.SIGNAL_CONSISTENCY_COL] = ''
             human_row[self.HUMAN_VS_AI_COL] = ''
             human_row[self.HUMAN_VS_CONSENSUS_COL] = ''
             results.append(human_row)
@@ -999,47 +1046,22 @@ class BatchAnalyzer:
             article_records = records_by_article.get(article_id, [])
             if not article_records:
                 self.logger.warning("  ⚠️ No raw records found; adding RAW_NOT_FOUND rows")
-                results.extend(self._create_error_rows(row, 'RAW_NOT_FOUND', question_maps))
+                results.extend(self._create_error_rows(row, 'RAW_NOT_FOUND', question_maps, providers=None))
                 self.stats['analysis_error'] += 1
                 continue
 
             configured_runs = self.config.get_ai_runs()
-            run_record_map: Dict[int, List[Dict]] = defaultdict(list)
-            for record in article_records:
-                run_idx = record.get('run_index')
-                if run_idx is None:
-                    continue
-                if isinstance(run_idx, str):
-                    if run_idx.isdigit():
-                        run_idx = int(run_idx)
-                    else:
-                        continue
-                if isinstance(run_idx, (int, float)):
-                    try:
-                        run_idx = int(run_idx)
-                    except ValueError:
-                        continue
-                if not isinstance(run_idx, int):
-                    continue
-                run_record_map[run_idx].append(record)
-
-            run_entries: List[Tuple[int, Optional[Dict]]] = []
-            if use_all_runs and run_record_map:
-                for run_number in sorted(run_record_map.keys()):
-                    for record in run_record_map[run_number]:
-                        run_entries.append((run_number, record))
-            else:
-                # Include all candidates for each run number (supporting multiple providers)
-                for run_number in range(1, configured_runs + 1):
-                    candidates = run_record_map.get(run_number, [])
-                    if candidates:
-                        for record in candidates:
-                            run_entries.append((run_number, record))
-                    else:
-                        run_entries.append((run_number, None))
-
+            run_entries, expected_providers = self._build_run_entries(
+                article_records=article_records,
+                configured_runs=configured_runs,
+                use_all_runs=use_all_runs
+            )
             if not run_entries:
-                run_entries = [(run_number, None) for run_number in range(1, configured_runs + 1)]
+                run_entries = [
+                    (run_number, provider, None)
+                    for run_number in range(1, configured_runs + 1)
+                    for provider in expected_providers
+                ]
 
             actual_run_count = len(run_entries)
             self.last_parse_run_counts[article_id] = actual_run_count
@@ -1047,13 +1069,29 @@ class BatchAnalyzer:
             ai_answer_sets = []
             ai_success_count = 0
             ai_rows_for_article: List[Dict] = []
+            successful_ai_rows: List[Dict] = []
 
-            for pos_idx, (run_number, record) in enumerate(run_entries):
+            for run_number, expected_provider, record in run_entries:
                 if not record:
-                    self.logger.warning("  ⚠️ Missing raw record for run %s; inserting placeholder", run_number)
+                    self.logger.warning(
+                        "  ⚠️ Missing raw record for provider=%s run=%s; inserting placeholder",
+                        expected_provider,
+                        run_number
+                    )
                     placeholder_ts = self._get_timestamp()
-                    ai_row = self._create_ai_row(row, run_number, None, placeholder_ts, question_maps, model_name=None, provider=None)
-                    ai_row['Analysis_Status'] = f'RAW_MISSING_RUN{run_number}_{placeholder_ts}'
+                    model_name = self.config.GEMINI_MODEL if expected_provider == "gemini" else self.config.CLS_MODEL
+                    ai_row = self._create_ai_row(
+                        row,
+                        run_number,
+                        None,
+                        placeholder_ts,
+                        question_maps,
+                        model_name=model_name,
+                        provider=expected_provider
+                    )
+                    ai_row['Analysis_Status'] = (
+                        f'RAW_MISSING_{expected_provider.upper()}_RUN{run_number}_{placeholder_ts}'
+                    )
                     ai_rows_for_article.append(ai_row)
                     results.append(ai_row)
                     self.stats['analysis_error'] += 1
@@ -1072,15 +1110,18 @@ class BatchAnalyzer:
                         ai_row = self._create_ai_row(row, run_number, answers, api_timestamp, question_maps, model_name=model_name, provider=provider)
                         ai_answer_sets.append((answers, api_timestamp))
                         ai_success_count += 1
+                        successful_ai_rows.append(ai_row)
                     else:
-                        self.logger.warning("  ⚠️ Parse error for run %s", run_number)
+                        self.logger.warning("  ⚠️ Parse error for provider=%s run=%s", provider, run_number)
                         ai_row = self._create_ai_row(row, run_number, None, api_timestamp, question_maps, model_name=model_name, provider=provider)
-                        ai_row['Analysis_Status'] = f'PARSE_ERROR_RUN{run_number}_{api_timestamp}'
+                        ai_row['Analysis_Status'] = f'PARSE_ERROR_{str(provider or "unknown").upper()}_RUN{run_number}_{api_timestamp}'
                         self.stats['analysis_error'] += 1
                 else:
                     ai_row = self._create_ai_row(row, run_number, None, api_timestamp, question_maps, model_name=model_name, provider=provider)
                     label = error_type or status or 'ANALYSIS_ERROR'
-                    ai_row['Analysis_Status'] = f'{label.upper()}_RUN{run_number}_{api_timestamp}'
+                    ai_row['Analysis_Status'] = (
+                        f'{label.upper()}_{str(provider or expected_provider or "unknown").upper()}_RUN{run_number}_{api_timestamp}'
+                    )
 
                     if error_type == 'PDF_NOT_FOUND':
                         self.stats['pdf_not_found'] += 1
@@ -1120,6 +1161,7 @@ class BatchAnalyzer:
             human_row[self.AI_SUCCESS_RATE_COL] = success_rate_value
             human_row[self.Q15_VOTE_COUNTS_COL] = vote_counts_text
 
+            majority_row = None
             # 多数票逻辑 (Modified to always generate row even on tie)
             if (self.config.ENABLE_MAJORITY_VOTE and
                 actual_run_count > 1 and
@@ -1164,6 +1206,22 @@ class BatchAnalyzer:
                     human_row[self.HUMAN_VS_AI_COL] = 'Majority vote unavailable (insufficient runs)'
                 else:
                     human_row[self.HUMAN_VS_AI_COL] = 'No AI majority'
+
+            human_value_for_consensus = human_row.get(q_human_col, '') if q_human_col else ''
+            consensus_vote_text, consensus_majority_type = self._summarize_consensus_across_rows(
+                successful_ai_rows,
+                qnum_map
+            )
+            human_vs_consensus = self._compare_human_vs_consensus_classification(
+                human_value_for_consensus,
+                consensus_majority_type,
+                consensus_vote_text
+            )
+            human_row[self.HUMAN_VS_CONSENSUS_COL] = human_vs_consensus
+            for ai_row in ai_rows_for_article:
+                ai_row[self.HUMAN_VS_CONSENSUS_COL] = human_vs_consensus
+            if majority_row is not None:
+                majority_row[self.HUMAN_VS_CONSENSUS_COL] = human_vs_consensus
 
             if ai_success_count > 0:
                 self.stats['success'] += 1
@@ -1229,27 +1287,33 @@ class BatchAnalyzer:
         self,
         row: pd.Series,
         error_type: str,
-        question_maps: QuestionMaps
+        question_maps: QuestionMaps,
+        providers: Optional[List[str]] = None,
     ) -> List[Dict]:
         """创建错误行"""
         ai_runs = self.config.get_ai_runs()
+        if not providers:
+            providers = [p.strip().lower() for p in (self.config.ENABLED_PROVIDERS or []) if p]
+        if not providers:
+            providers = [(self.config.LLM_PROVIDER or "openai").strip().lower()]
+
         rows = []
-        for run_idx in range(ai_runs):
-            ai_row = row.to_dict()
-            run_source_id = self._get_run_source_id(run_idx)
-            ai_row['source'] = run_source_id
-            ai_row['Analysis_Status'] = f'{error_type}_{self._get_timestamp()}'
-            # 清空答案
-            for col_name in set(question_maps.pkey.values()).union(question_maps.ai.values()):
-                ai_row[col_name] = ''
-            ai_row[self.AI_AGREEMENT_COL] = ''
-            ai_row[self.HUMAN_VS_AI_COL] = ''
-            ai_row[self.HUMAN_VS_CONSENSUS_COL] = ''
-            ai_row[self.AI_SUCCESS_COUNT_COL] = ''
-            ai_row[self.AI_TOTAL_COUNT_COL] = ''
-            ai_row[self.AI_SUCCESS_RATE_COL] = ''
-            ai_row[self.Q15_VOTE_COUNTS_COL] = ''
-            rows.append(ai_row)
+        for provider in providers:
+            model_name = self.config.GEMINI_MODEL if provider == "gemini" else self.config.CLS_MODEL
+            for run_idx in range(ai_runs):
+                run_number = run_idx + 1
+                ts = self._get_timestamp()
+                ai_row = self._create_ai_row(
+                    row=row,
+                    run_number=run_number,
+                    ai_answers=None,
+                    api_timestamp=ts,
+                    question_maps=question_maps,
+                    model_name=model_name,
+                    provider=provider,
+                )
+                ai_row['Analysis_Status'] = f'{error_type}_{provider.upper()}_RUN{run_number}_{ts}'
+                rows.append(ai_row)
         return rows
 
     def _create_ai_row(
@@ -1274,14 +1338,16 @@ class BatchAnalyzer:
             base_source = f"{provider_prefix}{model_name}-temp{self.config.TEMPERATURE}-reasoning_{reasoning}-verbosity_{verbosity}"
             run_source_id = f"{base_source}-run{run_number}"
         else:
-            # Fallback to default logic (using pos_idx as run_number-1)
-            # Note: run_number passed here might be actual run number or pos_idx depending on caller
-            # If it's pos_idx (0-based), we add 1. If it's run_number (1-based), we use it as is?
-            # The original code passed pos_idx (0-based) and _get_run_source_id added 1.
-            # To maintain compatibility if model_name is missing, we assume run_number is 0-based index here
-            # But we are changing the caller to pass actual run_number (1-based).
-            # So we should adjust.
-            run_source_id = self._get_run_source_id(run_number - 1)
+            if provider:
+                default_model = self.config.GEMINI_MODEL if provider == "gemini" else self.config.CLS_MODEL
+                reasoning = self.config.get_reasoning_effort()
+                verbosity = self.config.get_text_verbosity()
+                run_source_id = (
+                    f"{provider}-{default_model}-temp{self.config.TEMPERATURE}"
+                    f"-reasoning_{reasoning}-verbosity_{verbosity}-run{run_number}"
+                )
+            else:
+                run_source_id = self._get_run_source_id(run_number - 1)
 
         ai_row['source'] = run_source_id
 
@@ -1303,6 +1369,7 @@ class BatchAnalyzer:
                     ai_row[col_name] = answer
 
         ai_row[self.AI_AGREEMENT_COL] = ''
+        ai_row[self.SIGNAL_CONSISTENCY_COL] = ''
         ai_row[self.HUMAN_VS_AI_COL] = ''
         ai_row[self.HUMAN_VS_CONSENSUS_COL] = ''
         ai_row[self.AI_SUCCESS_COUNT_COL] = ''
@@ -1375,6 +1442,7 @@ class BatchAnalyzer:
 
         self.logger.info("    ✅ Majority vote completed")
         majority_row[self.AI_AGREEMENT_COL] = ''
+        majority_row[self.SIGNAL_CONSISTENCY_COL] = ''
         majority_row[self.HUMAN_VS_AI_COL] = ''
         majority_row[self.HUMAN_VS_CONSENSUS_COL] = ''
         majority_row[self.AI_SUCCESS_COUNT_COL] = ''
@@ -1439,15 +1507,24 @@ class BatchAnalyzer:
         if not vote_counts:
             return ''
         sorted_counts = sorted(vote_counts.items(), key=lambda item: (-item[1], item[0]))
-        counts_text = ", ".join(f"{count}*{answer}" for answer, count in sorted_counts)
+        formatted_counts = []
+        for answer, count in sorted_counts:
+            normalized_answer = self.voter._normalize_type_for_vote(str(answer))
+            label = normalized_answer or str(answer)
+            formatted_counts.append(f"{label}:{count}")
+        counts_text = ", ".join(formatted_counts)
         if is_tie:
             return f"Tie ({counts_text})"
         return counts_text
 
     def _compare_human_vs_ai_classification(self, human_value: str, ai_value: str) -> str:
         """比较人类与多数投票在分类问题(Q16)上的一致性"""
-        human_value = human_value or ''
-        ai_value = ai_value or ''
+        if human_value is None or (isinstance(human_value, float) and pd.isna(human_value)):
+            human_value = ''
+        if ai_value is None or (isinstance(ai_value, float) and pd.isna(ai_value)):
+            ai_value = ''
+        human_value = str(human_value).strip()
+        ai_value = str(ai_value).strip()
 
         if not ai_value:
             return 'AI majority missing'
@@ -1488,6 +1565,165 @@ class BatchAnalyzer:
             return False
         tied = sum(1 for value in counts.values() if value == max_count)
         return tied > 1
+
+    @staticmethod
+    def _normalize_run_index(run_idx) -> Optional[int]:
+        if run_idx is None:
+            return None
+        if isinstance(run_idx, str):
+            if run_idx.isdigit():
+                run_idx = int(run_idx)
+            else:
+                return None
+        if isinstance(run_idx, (int, float)):
+            try:
+                run_idx = int(run_idx)
+            except (TypeError, ValueError):
+                return None
+        if not isinstance(run_idx, int) or run_idx <= 0:
+            return None
+        return run_idx
+
+    @staticmethod
+    def _normalize_provider_name(provider_value: Optional[str]) -> str:
+        normalized = str(provider_value or "").strip().lower()
+        return normalized if normalized else "unknown"
+
+    def _extract_expected_providers(self, article_records: List[Dict]) -> List[str]:
+        known_providers = set()
+        has_unknown = False
+        for record in article_records:
+            provider = self._normalize_provider_name(record.get("provider"))
+            if provider == "unknown":
+                has_unknown = True
+            else:
+                known_providers.add(provider)
+
+        if known_providers:
+            providers = sorted(known_providers)
+            if has_unknown and len(providers) > 1:
+                providers.append("unknown")
+            return providers
+
+        configured_providers = [p.strip().lower() for p in (self.config.ENABLED_PROVIDERS or []) if p]
+        if configured_providers:
+            return configured_providers
+
+        fallback = (self.config.LLM_PROVIDER or "openai").strip().lower()
+        return [fallback]
+
+    def _build_run_entries(
+        self,
+        article_records: List[Dict],
+        configured_runs: int,
+        use_all_runs: bool
+    ) -> Tuple[List[Tuple[int, str, Optional[Dict]]], List[str]]:
+        expected_providers = self._extract_expected_providers(article_records)
+        record_by_key: Dict[Tuple[int, str], Dict] = {}
+        discovered_runs = set()
+
+        for record in article_records:
+            run_idx = self._normalize_run_index(record.get("run_index"))
+            if run_idx is None:
+                continue
+
+            provider = self._normalize_provider_name(record.get("provider"))
+            if provider == "unknown" and len(expected_providers) == 1:
+                provider = expected_providers[0]
+
+            key = (run_idx, provider)
+            existing = record_by_key.get(key)
+            if existing is None or (record.get("timestamp") or "") >= (existing.get("timestamp") or ""):
+                record_by_key[key] = record
+            discovered_runs.add(run_idx)
+
+        entries: List[Tuple[int, str, Optional[Dict]]] = []
+        if use_all_runs and discovered_runs:
+            for run_idx in sorted(discovered_runs):
+                providers_for_run = sorted({
+                    provider for (record_run, provider) in record_by_key.keys() if record_run == run_idx
+                })
+                if not providers_for_run:
+                    providers_for_run = expected_providers
+                for provider in providers_for_run:
+                    entries.append((run_idx, provider, record_by_key.get((run_idx, provider))))
+            return entries, expected_providers
+
+        for run_idx in range(1, configured_runs + 1):
+            for provider in expected_providers:
+                entries.append((run_idx, provider, record_by_key.get((run_idx, provider))))
+
+        return entries, expected_providers
+
+    def _extract_consensus_type(self, consensus_text: str) -> str:
+        if not consensus_text:
+            return ''
+        normalized = str(consensus_text).strip().lower()
+        if not normalized:
+            return ''
+        if normalized.startswith("tie between"):
+            return ''
+        if normalized in {"no data", "no clear consensus"}:
+            return ''
+        match = re.search(r'\btype\s*([1-4])\b', consensus_text, re.IGNORECASE)
+        if not match:
+            return ''
+        return f"Type {match.group(1)}"
+
+    def _summarize_consensus_across_rows(
+        self,
+        successful_ai_rows: List[Dict],
+        column_mapping: Dict[int, str]
+    ) -> Tuple[str, str]:
+        if not successful_ai_rows:
+            return "No successful runs", ''
+
+        consensus_counter = defaultdict(int)
+        for ai_row in successful_ai_rows:
+            consensus_text = self.consensus_analyzer.derive_consensus(pd.Series(ai_row), column_mapping)
+            consensus_type = self._extract_consensus_type(consensus_text)
+            if consensus_type:
+                consensus_counter[consensus_type] += 1
+
+        if not consensus_counter:
+            return "No clear consensus", ''
+
+        sorted_counts = sorted(consensus_counter.items(), key=lambda item: (-item[1], item[0]))
+        vote_text = ", ".join(f"{label}:{count}" for label, count in sorted_counts)
+        top_count = sorted_counts[0][1]
+        tied_winners = [item for item in sorted_counts if item[1] == top_count]
+        if len(tied_winners) > 1:
+            return f"Tie ({vote_text})", ''
+
+        return vote_text, sorted_counts[0][0]
+
+    def _compare_human_vs_consensus_classification(
+        self,
+        human_value: str,
+        consensus_type: str,
+        consensus_vote_text: str
+    ) -> str:
+        consensus_vote_text = consensus_vote_text or ''
+        if not consensus_vote_text:
+            return "Consensus unavailable"
+        if consensus_vote_text.lower().startswith("tie"):
+            return "Consensus tie (no majority)"
+        if not consensus_type:
+            return "Consensus unavailable"
+
+        if human_value is None or (isinstance(human_value, float) and pd.isna(human_value)):
+            human_value = ''
+        human_value = str(human_value).strip()
+
+        if not human_value:
+            return f"Human missing (Consensus={consensus_type})"
+        normalized_human = self.voter._normalize_type_for_vote(human_value)
+        if not normalized_human:
+            return f"Human unclassified (Consensus={consensus_type})"
+        if normalized_human == consensus_type:
+            return f"Match ({consensus_type})"
+        return f"Mismatch (Human={normalized_human}, Consensus={consensus_type})"
+
     def _compose_type_summary(
         self,
         row: pd.Series,
@@ -1658,7 +1894,7 @@ class BatchAnalyzer:
             axis=1
         )
 
-        df[self.AI_AGREEMENT_COL] = df.apply(
+        df[self.SIGNAL_CONSISTENCY_COL] = df.apply(
             lambda row: self._summarize_run_agreement(
                 row, column_mapping, decision_tree_col, support_types_col
             ),
@@ -1695,7 +1931,9 @@ class BatchAnalyzer:
             decision_tree_col,
             self.SUPPORT_TYPES_COL,
             self.AI_AGREEMENT_COL,
+            self.SIGNAL_CONSISTENCY_COL,
             self.HUMAN_VS_AI_COL,
+            self.HUMAN_VS_CONSENSUS_COL,
             self.TYPE_SUMMARY_COL,
             self.FINAL_AI_DECISION_COL,
             self.AI_SUCCESS_COUNT_COL,

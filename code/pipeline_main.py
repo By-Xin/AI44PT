@@ -98,12 +98,14 @@ def main():
         logger.info("   Skip Bad JSON: %s", skip_bad)
         logger.info("   Parse All Runs: %s", parse_all_runs)
 
-    # 验证配置
-    if not config.validate():
+    # 验证配置（按阶段）
+    if not config.validate(stage=stage):
         logger.error("Configuration validation failed!")
-        logger.error("Please check:")
-        logger.error("  - OPENAI_API_KEY is set in .env file")
-        logger.error("  - Codebook file exists at: %s", config.CODINGTASK_MD)
+        logger.error("Please check stage-specific dependencies for '%s'.", stage)
+        if stage in {"raw", "full"}:
+            logger.error("  - Provider API keys are set in .env file")
+            logger.error("  - Prompt guide files exist under data/instructions/")
+            logger.error("  - PDF folder exists at: %s", config.PDF_FOLDER)
         logger.error("  - Excel file exists at: %s", config.EXCEL_PATH)
         return 1
 
@@ -123,23 +125,77 @@ def main():
                 logger.info("📁 Raw output target: %s", raw_output_path)
     elif stage == "parse":
         def _collect_parse_targets(directory: Path):
+            def _list_aggregated_files(base_dir: Path):
+                json_files = sorted(base_dir.glob("*.json"))
+                jsonl_files = sorted(base_dir.glob("*.jsonl"))
+                if not json_files and not jsonl_files:
+                    return []
+
+                # Prefer JSON arrays that have a matching streaming JSONL twin (same stem).
+                jsonl_stems = {p.stem for p in jsonl_files}
+                paired_json_files = [p for p in json_files if p.stem in jsonl_stems]
+                if paired_json_files:
+                    return paired_json_files
+
+                # Fallback for legacy naming.
+                legacy_json_files = [p for p in json_files if p.name.startswith("raw_responses_")]
+                if legacy_json_files:
+                    return legacy_json_files
+                legacy_jsonl_files = [p for p in jsonl_files if p.name.startswith("raw_responses_")]
+                if legacy_jsonl_files:
+                    return legacy_jsonl_files
+
+                # If only JSONL exists (e.g., interrupted raw stage before final JSON dump), accept it.
+                if jsonl_files:
+                    return jsonl_files
+
+                return []
+
             aggregated_dir = directory / "aggregated"
             if aggregated_dir.exists() and aggregated_dir.is_dir():
-                aggregated_files = sorted(aggregated_dir.glob("*.json"))
+                aggregated_files = _list_aggregated_files(aggregated_dir)
                 if aggregated_files:
-                    logger.info("📁 Found %s aggregated JSON file(s) in %s", len(aggregated_files), aggregated_dir)
+                    logger.info(
+                        "📁 Found %s aggregated raw file(s) in %s",
+                        len(aggregated_files),
+                        aggregated_dir,
+                    )
                     return aggregated_files
 
-            aggregated_files = sorted(directory.glob("raw_responses_*.json"))
+            aggregated_files = _list_aggregated_files(directory)
             if aggregated_files:
-                logger.info("📁 Found %s aggregated JSON file(s) in %s", len(aggregated_files), directory)
+                logger.info("📁 Found %s aggregated raw file(s) in %s", len(aggregated_files), directory)
                 return aggregated_files
 
-            json_files = sorted(directory.glob("*.json"))
-            if json_files:
-                logger.info("📁 Found %s JSON file(s) in %s; will merge during parse", len(json_files), directory)
-                return [directory]
-            logger.error("No JSON files found in directory: %s", directory)
+            nested_targets = []
+            for child_dir in sorted(p for p in directory.iterdir() if p.is_dir()):
+                child_aggregated_dir = child_dir / "aggregated"
+                child_files = []
+                if child_aggregated_dir.exists() and child_aggregated_dir.is_dir():
+                    child_files = _list_aggregated_files(child_aggregated_dir)
+                if not child_files:
+                    child_files = _list_aggregated_files(child_dir)
+                nested_targets.extend(child_files)
+
+            if nested_targets:
+                logger.info(
+                    "📁 Found %s aggregated raw file(s) under run directories in %s",
+                    len(nested_targets),
+                    directory,
+                )
+                return nested_targets
+
+            loose_json_files = sorted(directory.glob("*.json"))
+            loose_jsonl_files = sorted(directory.glob("*.jsonl"))
+            if loose_json_files or loose_jsonl_files:
+                logger.error(
+                    "Directory %s contains non-aggregated JSON/JSONL files. "
+                    "Please pass an explicit aggregated file (raw_responses_*.json/jsonl) or run directory.",
+                    directory,
+                )
+                return []
+
+            logger.error("No aggregated raw files found in directory: %s", directory)
             return []
 
         if raw_path_arg:
@@ -149,7 +205,7 @@ def main():
                     return 1
             elif raw_path_arg.is_file():
                 suffix = raw_path_arg.suffix.lower()
-                if suffix == ".json":
+                if suffix in {".json", ".jsonl"}:
                     parse_targets = [raw_path_arg]
                     logger.info("📁 Parsing raw file: %s", raw_path_arg)
                 else:
@@ -174,6 +230,7 @@ def main():
     # 创建批量分析器
     analyzer = BatchAnalyzer(config)
     skipped_batches = []
+    failed_batches = []
 
     # 执行批量分析
     logger.info("=" * 60)
@@ -240,6 +297,7 @@ def main():
 
         if stage == "parse" and len(parse_targets) > 1:
             total_runs = len(parse_targets)
+            successful_batches = 0
             for idx, jsonl_path in enumerate(parse_targets, start=1):
                 logger.info("-" * 60)
                 logger.info("BATCH %s/%s: %s", idx, total_runs, jsonl_path)
@@ -260,12 +318,15 @@ def main():
 
                 if (results_df is None) or results_df.empty:
                     message = "Parse returned no results"
-                    logger.warning("  ⚠️ %s", message)
+                    logger.error("  ❌ %s", message)
                     if skip_bad:
                         skipped_batches.append((jsonl_path, message))
                         continue
+                    failed_batches.append((jsonl_path, message))
+                    continue
 
                 verify_results(results_df)
+                successful_batches += 1
 
                 if analyzer.last_raw_source_path:
                     logger.info("📁 Raw source path: %s", analyzer.last_raw_source_path)
@@ -281,6 +342,18 @@ def main():
                 logger.info("-" * 60)
                 for path, reason in skipped_batches:
                     logger.info("⏭️ %s -> %s", path, reason)
+            if failed_batches:
+                logger.error("-" * 60)
+                logger.error("FAILED BATCHES SUMMARY")
+                logger.error("-" * 60)
+                for path, reason in failed_batches:
+                    logger.error("❌ %s -> %s", path, reason)
+                return 1
+
+            if successful_batches == 0 and total_runs > 0 and not skip_bad:
+                logger.error("No parse batch produced valid results.")
+                return 1
+
             return 0
 
         try:

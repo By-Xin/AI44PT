@@ -2,6 +2,12 @@
 
 This directory contains the modular 4PT analysis system, organized into specialized modules following data science best practices.
 
+## Current Priority
+
+- Active workstream: implementation bug fixing and runtime stability improvements.
+- Track and update issues in `../CODE_IMPLEMENTATION_ISSUES.md`.
+- Resolve `P0` items first, then `P1`, before feature-oriented changes.
+
 ## Module Structure (7 files)
 
 ### Core Modules

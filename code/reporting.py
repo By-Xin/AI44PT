@@ -276,6 +276,10 @@ def _build_article_summary(
         }
 
         for type_id in type_ids:
+            support_col_name = f"Type {type_id} support avg"
+            support_value = extent_avgs.get(type_id)
+            summary_row[support_col_name] = round(support_value, 3) if support_value is not None else None
+
             confidence_col_name = f"Type {type_id} confidence avg"
             confidence_value = confidence_avgs.get(type_id)
             summary_row[confidence_col_name] = round(confidence_value, 3) if confidence_value is not None else None
@@ -309,6 +313,7 @@ def _build_article_summary(
         "Majority Vote Available",
     ]
     for type_id in type_ids:
+        desired_order.append(f"Type {type_id} support avg")
         desired_order.append(f"Type {type_id} confidence avg")
     existing_columns = [col for col in desired_order if col in summary_df.columns]
     remaining_columns = [col for col in summary_df.columns if col not in existing_columns]
@@ -947,26 +952,49 @@ def _summarise_vote_pattern(vote_text: str) -> Tuple[str, int, int]:
 def _parse_vote_counts(text: str) -> List[Tuple[str, int]]:
     if not text:
         return []
+
+    raw_text = str(text).strip()
+    tie_match = re.match(r"^\s*tie\s*\((.*)\)\s*$", raw_text, re.IGNORECASE)
+    if tie_match:
+        raw_text = tie_match.group(1).strip()
+
     counts: List[Tuple[str, int]] = []
-    for part in str(text).split(","):
+    for part in raw_text.split(","):
         part = part.strip()
         if not part:
             continue
-        match = re.search(r"(Type\s*\d+).*?(\d+)$", part, re.IGNORECASE)
+
+        # Legacy format: 2*Type 1
+        match = re.search(r"(\d+)\s*\*\s*(Type\s*\d+)", part, re.IGNORECASE)
         if match:
-            label = match.group(1).title().replace(" ", " ")
+            label = _normalize_type_answer(match.group(2))
+            count = int(match.group(1))
+            counts.append((label, count))
+            continue
+
+        # Canonical format: Type 1:2
+        match = re.search(r"(Type\s*\d+)\s*[:：]\s*(\d+)\b", part, re.IGNORECASE)
+        if match:
+            label = _normalize_type_answer(match.group(1))
             count = int(match.group(2))
             counts.append((label, count))
             continue
-        # fallback: look for last colon
+
+        # Backward-compatible fallback: Type X ... N (N at end)
+        match = re.search(r"(Type\s*\d+).*?(\d+)\s*$", part, re.IGNORECASE)
+        if match:
+            label = _normalize_type_answer(match.group(1))
+            count = int(match.group(2))
+            counts.append((label, count))
+            continue
+
+        # Generic fallback for non-Type labels with colon suffix
         if ":" in part:
             label_text, count_text = part.rsplit(":", 1)
-            label = label_text.strip()
             try:
-                count = int(count_text.strip())
+                counts.append((label_text.strip(), int(count_text.strip())))
             except ValueError:
                 continue
-            counts.append((label, count))
     return counts
 
 
@@ -1089,7 +1117,19 @@ def _collect_type_metrics(
     confidence_avgs: Dict[int, float] = {}
 
     for type_id, question_refs in Config.TYPE_QUESTION_GROUPS.items():
+        support_col = question_map.get(question_refs["support"])
         confidence_col = question_map.get(question_refs["confidence"])
+
+        if support_col and support_col in success_rows.columns:
+            support_values = []
+            for value in success_rows[support_col]:
+                text = str(value or "").strip().lower()
+                if re.search(r"\byes\b", text):
+                    support_values.append(1.0)
+                elif re.search(r"\bno\b", text):
+                    support_values.append(0.0)
+            if support_values:
+                extent_avgs[type_id] = sum(support_values) / len(support_values)
 
         if confidence_col and confidence_col in success_rows.columns:
             confidence_values = []
