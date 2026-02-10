@@ -262,17 +262,27 @@ def main():
                 if expected_runs is None:
                     expected_runs = config.get_ai_runs()
 
-                tie_detected = False
+                majority_row_present = any("majority-vote" in str(src).lower() for src in ai_sources)
+                success_count = None
                 human_rows = article_rows[article_rows['source'] == 'human']
                 if not human_rows.empty:
                     human_record = human_rows.iloc[0]
-                    ai_agreement = str(human_record.get(analyzer.AI_AGREEMENT_COL, '') or '').lower()
-                    human_vs_ai_text = str(human_record.get(analyzer.HUMAN_VS_AI_COL, '') or '').lower()
-                    if 'split consensus' in ai_agreement or 'tie' in human_vs_ai_text:
-                        tie_detected = True
+                    success_raw = human_record.get(analyzer.AI_SUCCESS_COUNT_COL, '')
+                    try:
+                        success_count = int(float(success_raw))
+                    except (TypeError, ValueError):
+                        success_count = None
 
                 expected_ai = expected_runs
-                if (config.ENABLE_MAJORITY_VOTE and expected_runs > 1 and not tie_detected):
+                should_have_majority = (
+                    config.ENABLE_MAJORITY_VOTE
+                    and expected_runs > 1
+                    and (
+                        majority_row_present
+                        or (success_count is not None and success_count >= 2)
+                    )
+                )
+                if should_have_majority:
                     expected_ai += 1  # +1 for majority vote row
 
                 if len(ai_sources) != expected_ai:

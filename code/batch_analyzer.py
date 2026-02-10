@@ -502,14 +502,14 @@ class BatchAnalyzer:
                     load_json_file(json_file)
                 for jsonl_file in jsonl_files:
                     load_jsonl_file(jsonl_file)
-
-        suffix = source_path.suffix.lower()
-        if suffix == ".json":
-            load_json_file(source_path)
-        elif suffix == ".jsonl":
-            load_jsonl_file(source_path)
         else:
-            self.logger.error("❌ Unsupported raw data format: %s", source_path)
+            suffix = source_path.suffix.lower()
+            if suffix == ".json":
+                load_json_file(source_path)
+            elif suffix == ".jsonl":
+                load_jsonl_file(source_path)
+            else:
+                self.logger.error("❌ Unsupported raw data format: %s", source_path)
 
         if not records:
             return records
@@ -772,7 +772,7 @@ class BatchAnalyzer:
                             s_success = generation_stats.get('success', 0)
                             s_err = generation_stats.get('analysis_error', 0)
                             s_pdf_missing = generation_stats.get('pdf_not_found', 0)
-                            s_pdf_err = generation_stats.get('pdf_error', 0)
+                            s_pdf_err = generation_stats.get('pdf_read_error', 0)
                         self.logger.info(
                             "  ↪️ Progress: %s/%s calls | success %s, errors %s, pdf_missing %s, pdf_read_err %s",
                             done_calls,
