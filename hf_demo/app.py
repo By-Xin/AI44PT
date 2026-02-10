@@ -5,6 +5,8 @@ Maintains full analysis quality while providing web accessibility
 """
 
 import os
+import re
+import shutil
 import sys
 import tempfile
 import traceback
@@ -81,139 +83,169 @@ def analyze_single_paper(
         analyzer, init_msg = initialize_analyzer()
         if analyzer is None:
             return "", "", "", init_msg
-    
+
+    pdf_path = None
+    excel_path = None
+    temp_pdf_dir = None
+    original_runs = Config.DEFAULT_AI_RUNS
+    original_effort = Config.DEFAULT_REASONING_EFFORT
+    original_consensus = Config.ENABLE_MAJORITY_VOTE
+    original_pdf_folder = Config.PDF_FOLDER
+
     try:
         progress(0.1, desc="Processing PDF file...")
-        
+
         # Save uploaded file to temporary location
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
             tmp_file.write(pdf_file.read())
             pdf_path = tmp_file.name
-        
+
         progress(0.2, desc="Reading document content...")
-        
+
         # Read document
         doc_reader = DocumentReader()
-        doc_content = doc_reader.read_pdf(pdf_path)
-        
-        if not doc_content or len(doc_content.strip()) < 100:
+        doc_pages = doc_reader.read_pdf(pdf_path)
+        extracted_text = "\n\n".join(
+            str(page.get("text", "") or "")
+            for page in doc_pages
+            if isinstance(page, dict)
+        )
+
+        if len(extracted_text.strip()) < 100:
             return "", "", "", "❌ Could not extract sufficient text from PDF"
-        
+
         progress(0.3, desc="Configuring analysis parameters...")
-        
+
         # Configure analysis parameters
-        original_runs = Config.DEFAULT_AI_RUNS
-        original_effort = Config.DEFAULT_REASONING_EFFORT
-        original_consensus = Config.ENABLE_MAJORITY_VOTE
-        
         Config.DEFAULT_AI_RUNS = analysis_runs
         Config.DEFAULT_REASONING_EFFORT = reasoning_effort.lower()
         Config.ENABLE_MAJORITY_VOTE = enable_consensus
-        
+
         # Create temporary Excel file for single paper analysis
         progress(0.4, desc="Preparing analysis framework...")
-        
+
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.xlsx') as tmp_excel:
             # Create minimal Excel structure for single paper
             df = pd.DataFrame({
                 '#': [1],
                 'Title of the Paper': ['Uploaded Paper'],
                 'source': [os.path.basename(pdf_file.name) if hasattr(pdf_file, 'name') else 'uploaded.pdf'],
-                'Type (Q15)': [''],  # Will be filled by analysis
+                '[Q15]Final problem type of the article (Type 1, 2, 3, and 4)': [''],
             })
             df.to_excel(tmp_excel.name, index=False)
             excel_path = tmp_excel.name
-        
+
+        # Point pipeline PDF folder to uploaded paper so analysis targets this file.
+        temp_pdf_dir = tempfile.TemporaryDirectory()
+        uploaded_pdf_target = Path(temp_pdf_dir.name) / "1.pdf"
+        shutil.copyfile(pdf_path, uploaded_pdf_target)
+        Config.PDF_FOLDER = Path(temp_pdf_dir.name)
+        analyzer.config.PDF_FOLDER = Config.PDF_FOLDER
+
         progress(0.5, desc="Running 4PT analysis...")
-        
+
         # Run the full analysis pipeline
-        try:
-            # Use the existing batch analyzer but with single paper
-            results_df = analyzer.process_batch(
-                excel_path=excel_path,
-                raw_data_path=None,  # Generate new analysis
-                stage="full",
-                use_all_runs=False
-            )
-            
-            progress(0.8, desc="Processing results...")
-            
-            if results_df is None or results_df.empty:
-                return "", "", "", "❌ Analysis failed to produce results"
-            
-            # Extract results
-            human_rows = results_df[results_df['source'] == 'human']
-            ai_rows = results_df[results_df['source'] != 'human']
-            majority_rows = results_df[results_df['source'].str.contains('majority', na=False)]
-            
-            progress(0.9, desc="Formatting output...")
-            
-            # Determine final classification
-            if not majority_rows.empty:
-                # Use majority vote result
-                final_row = majority_rows.iloc[0]
-                classification = final_row.get('Type (Q15)', 'Unknown')
-                confidence_info = final_row.get(analyzer.AI_AGREEMENT_COL, 'Not available')
-                vote_counts = final_row.get(analyzer.Q15_VOTE_COUNTS_COL, 'Not available')
-            elif len(ai_rows) > 0:
-                # Use first AI result if no majority vote
-                final_row = ai_rows.iloc[0]
-                classification = final_row.get('Type (Q15)', 'Unknown')
-                confidence_info = "Single run (no consensus analysis)"
-                vote_counts = "N/A (single run)"
-            else:
-                return "", "", "", "❌ No AI analysis results found"
-            
-            # Format confidence information
-            confidence_text = f"**Agreement Level**: {confidence_info}\n**Vote Distribution**: {vote_counts}"
-            
-            # Create detailed analysis
-            detailed_analysis = "## 📊 4PT Analysis Results\n\n"
-            detailed_analysis += f"**Final Classification**: {classification}\n\n"
-            detailed_analysis += f"**Analysis Runs**: {len(ai_rows)} independent evaluations\n\n"
-            detailed_analysis += f"**Consensus Method**: {'Majority voting enabled' if enable_consensus else 'Individual runs only'}\n\n"
-            
-            # Add sample questions and answers if available
-            detailed_analysis += "## 🔍 Key Analysis Questions\n\n"
-            
-            # Extract some key question responses
-            key_questions = ['Q1', 'Q3', 'Q6', 'Q9', 'Q12', 'Q15', 'Q16']
-            for q in key_questions:
-                col_name = f"Response {q}"
-                if col_name in final_row:
-                    response = final_row[col_name]
-                    if pd.notna(response) and str(response).strip():
-                        detailed_analysis += f"**{q}**: {str(response)[:200]}{'...' if len(str(response)) > 200 else ''}\n\n"
-            
-            # Add methodology note
-            detailed_analysis += "---\n\n"
-            detailed_analysis += "## 📚 Methodology\n\n"
-            detailed_analysis += f"This analysis used the complete 28-question 4PT framework with {analysis_runs} independent AI evaluations. "
-            if enable_consensus:
-                detailed_analysis += "Results represent the majority consensus across all runs."
-            else:
-                detailed_analysis += "Results represent individual analysis without consensus voting."
-            
-            progress(1.0, desc="Analysis complete!")
-            
-            return classification, confidence_text, detailed_analysis, ""
-            
-        finally:
-            # Restore original config
-            Config.DEFAULT_AI_RUNS = original_runs
-            Config.DEFAULT_REASONING_EFFORT = original_effort
-            Config.ENABLE_MAJORITY_VOTE = original_consensus
-            
-            # Clean up temporary files
-            try:
-                os.unlink(pdf_path)
-                os.unlink(excel_path)
-            except:
-                pass
+        # Use the existing batch analyzer but with single paper
+        results_df = analyzer.process_batch(
+            excel_path=excel_path,
+            raw_data_path=None,  # Generate new analysis
+            stage="full",
+            use_all_runs=False
+        )
+
+        progress(0.8, desc="Processing results...")
+
+        if results_df is None or results_df.empty:
+            return "", "", "", "❌ Analysis failed to produce results"
+
+        def _find_question_column(columns, q_num: int) -> Optional[str]:
+            pattern = re.compile(rf"\[Q{q_num}\]", re.IGNORECASE)
+            for column in columns:
+                if pattern.search(str(column)):
+                    return column
+            return None
+
+        q15_column = _find_question_column(results_df.columns, 15)
+        q16_column = _find_question_column(results_df.columns, 16)
+
+        # Extract results
+        ai_rows = results_df[results_df['source'] != 'human']
+        majority_rows = results_df[results_df['source'].str.contains('majority', na=False)]
+
+        progress(0.9, desc="Formatting output...")
+
+        # Determine final classification
+        if not majority_rows.empty:
+            final_row = majority_rows.iloc[0]
+            classification_raw = final_row.get(q15_column, '') if q15_column else ''
+            classification = str(classification_raw or "Unknown")
+            confidence_info = final_row.get(analyzer.AI_AGREEMENT_COL, 'Not available')
+            vote_counts = final_row.get(analyzer.Q15_VOTE_COUNTS_COL, 'Not available')
+        elif len(ai_rows) > 0:
+            final_row = ai_rows.iloc[0]
+            fallback_col = q16_column or q15_column
+            classification_raw = final_row.get(fallback_col, '') if fallback_col else ''
+            classification = str(classification_raw or "Unknown")
+            confidence_info = "Single run (no consensus analysis)"
+            vote_counts = "N/A (single run)"
+        else:
+            return "", "", "", "❌ No AI analysis results found"
+
+        # Format confidence information
+        confidence_text = f"**Agreement Level**: {confidence_info}\n**Vote Distribution**: {vote_counts}"
+
+        # Create detailed analysis
+        detailed_analysis = "## 📊 4PT Analysis Results\n\n"
+        detailed_analysis += f"**Final Classification**: {classification}\n\n"
+        detailed_analysis += f"**Analysis Runs**: {len(ai_rows)} independent evaluations\n\n"
+        detailed_analysis += f"**Consensus Method**: {'Majority voting enabled' if enable_consensus else 'Individual runs only'}\n\n"
+
+        # Add sample questions and answers if available
+        detailed_analysis += "## 🔍 Key Analysis Questions\n\n"
+
+        key_question_ids = [1, 3, 6, 9, 12, 15, 16]
+        for q_num in key_question_ids:
+            col_name = _find_question_column(results_df.columns, q_num)
+            if not col_name:
+                continue
+            response = final_row.get(col_name)
+            if pd.notna(response) and str(response).strip():
+                response_text = str(response)
+                truncated = f"{response_text[:200]}{'...' if len(response_text) > 200 else ''}"
+                detailed_analysis += f"**Q{q_num}**: {truncated}\n\n"
+
+        # Add methodology note
+        detailed_analysis += "---\n\n"
+        detailed_analysis += "## 📚 Methodology\n\n"
+        detailed_analysis += f"This analysis used the complete 28-question 4PT framework with {analysis_runs} independent AI evaluations. "
+        if enable_consensus:
+            detailed_analysis += "Results represent the majority consensus across all runs."
+        else:
+            detailed_analysis += "Results represent individual analysis without consensus voting."
+
+        progress(1.0, desc="Analysis complete!")
+
+        return classification, confidence_text, detailed_analysis, ""
     
     except Exception as e:
         error_msg = f"❌ Analysis failed: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
         return "", "", "", error_msg
+    finally:
+        Config.DEFAULT_AI_RUNS = original_runs
+        Config.DEFAULT_REASONING_EFFORT = original_effort
+        Config.ENABLE_MAJORITY_VOTE = original_consensus
+        Config.PDF_FOLDER = original_pdf_folder
+        if analyzer is not None:
+            analyzer.config.PDF_FOLDER = original_pdf_folder
+
+        if temp_pdf_dir is not None:
+            temp_pdf_dir.cleanup()
+        for temp_path in [pdf_path, excel_path]:
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.unlink(temp_path)
+                except OSError:
+                    pass
 
 def create_interface():
     """Create the Gradio interface"""

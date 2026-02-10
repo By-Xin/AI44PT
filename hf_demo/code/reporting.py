@@ -549,13 +549,15 @@ def _build_confusion_tables(summary_df: pd.DataFrame) -> List[Tuple[str, pd.Data
     if human_series is None or ai_series is None:
         return []
 
-    human_series = human_series.fillna("Unknown")
-    ai_series = ai_series.fillna("No majority")
+    human_series = human_series.apply(lambda value: _normalize_confusion_label(value, fallback="Unknown"))
+    ai_series = ai_series.apply(lambda value: _normalize_confusion_label(value, fallback="No majority"))
 
     if human_series.empty:
         return []
 
-    labels = sorted(set(human_series.unique()).union(set(ai_series.unique())))
+    labels = sorted(
+        {str(label) for label in human_series.unique()}.union({str(label) for label in ai_series.unique()})
+    )
 
     counts = pd.crosstab(human_series, ai_series, dropna=False).reindex(index=labels, columns=labels, fill_value=0)
 
@@ -567,9 +569,9 @@ def _build_confusion_tables(summary_df: pd.DataFrame) -> List[Tuple[str, pd.Data
         formatted.columns.name = df.columns.name
         return formatted
 
-    row_sum = counts.sum(axis=1).replace(0, pd.NA)
+    row_sum = counts.sum(axis=1).replace(0, float("nan"))
     row_norm = counts.div(row_sum, axis=0).fillna(0.0)
-    col_sum = counts.sum(axis=0).replace(0, pd.NA)
+    col_sum = counts.sum(axis=0).replace(0, float("nan"))
     col_norm = counts.div(col_sum, axis=1).fillna(0.0)
 
     metrics_rows = []
@@ -1029,6 +1031,18 @@ def _normalize_type_answer(answer: str) -> str:
     if match:
         return f"Type {match.group(1)}"
     return answer
+
+
+def _normalize_confusion_label(value: object, *, fallback: str) -> str:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return fallback
+
+    text = str(value).strip()
+    if not text:
+        return fallback
+
+    normalized = _normalize_type_answer(text)
+    return normalized or text
 
 
 def _collect_type_metrics(
