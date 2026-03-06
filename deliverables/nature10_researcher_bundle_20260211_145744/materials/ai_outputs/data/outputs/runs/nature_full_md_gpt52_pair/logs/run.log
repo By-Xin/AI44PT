@@ -1,0 +1,37 @@
+2026-01-06 11:02:09,117 INFO ai44pt.cli: ========================================================================
+2026-01-06 11:02:09,118 INFO ai44pt.cli: run start
+2026-01-06 11:02:09,118 INFO ai44pt.cli: ========================================================================
+2026-01-06 11:02:09,118 INFO ai44pt.cli: [run] start run_id=nature_full_md_gpt52_pair_excel stage=excel config=config/nature_full_md_excel_only.yaml out_dir=data/outputs/runs/nature_full_md_gpt52_pair verbosity=verbose log=data/outputs/runs/nature_full_md_gpt52_pair/logs/run.log
+2026-01-06 11:02:09,119 INFO ai44pt.cli: ========================================================================
+2026-01-06 11:02:09,119 INFO ai44pt.cli: stage: excel
+2026-01-06 11:02:09,119 INFO ai44pt.cli: ========================================================================
+2026-01-06 11:02:09,120 INFO ai44pt.runners.excel_report: [excel] input_parsed=data/outputs/runs/nature_full_md_gpt52_pair/parsed/pred_parsed.jsonl gold=data/processed/nature_placeholder_gold_labels.jsonl output=data/outputs/runs/nature_full_md_gpt52_pair/reports/review.xlsx overwrite=True
+2026-01-06 11:02:09,939 DEBUG PIL.PngImagePlugin: STREAM b'IHDR' 16 13
+2026-01-06 11:02:09,939 DEBUG PIL.PngImagePlugin: STREAM b'tEXt' 41 57
+2026-01-06 11:02:09,940 DEBUG PIL.PngImagePlugin: STREAM b'pHYs' 110 9
+2026-01-06 11:02:09,940 DEBUG PIL.PngImagePlugin: STREAM b'IDAT' 131 23635
+2026-01-06 11:02:09,941 DEBUG PIL.PngImagePlugin: STREAM b'IHDR' 16 13
+2026-01-06 11:02:09,941 DEBUG PIL.PngImagePlugin: STREAM b'tEXt' 41 57
+2026-01-06 11:02:09,942 DEBUG PIL.PngImagePlugin: STREAM b'pHYs' 110 9
+2026-01-06 11:02:09,942 DEBUG PIL.PngImagePlugin: STREAM b'IDAT' 131 35981
+2026-01-06 11:02:09,942 DEBUG PIL.PngImagePlugin: STREAM b'IHDR' 16 13
+2026-01-06 11:02:09,943 DEBUG PIL.PngImagePlugin: STREAM b'tEXt' 41 57
+2026-01-06 11:02:09,943 DEBUG PIL.PngImagePlugin: STREAM b'pHYs' 110 9
+2026-01-06 11:02:09,944 DEBUG PIL.PngImagePlugin: STREAM b'IDAT' 131 33623
+2026-01-06 11:02:09,976 DEBUG PIL.PngImagePlugin: STREAM b'IHDR' 16 13
+2026-01-06 11:02:09,976 DEBUG PIL.PngImagePlugin: STREAM b'tEXt' 41 57
+2026-01-06 11:02:09,976 DEBUG PIL.PngImagePlugin: STREAM b'pHYs' 110 9
+2026-01-06 11:02:09,977 DEBUG PIL.PngImagePlugin: STREAM b'IDAT' 131 23635
+2026-01-06 11:02:09,978 DEBUG PIL.PngImagePlugin: STREAM b'IHDR' 16 13
+2026-01-06 11:02:09,978 DEBUG PIL.PngImagePlugin: STREAM b'tEXt' 41 57
+2026-01-06 11:02:09,978 DEBUG PIL.PngImagePlugin: STREAM b'pHYs' 110 9
+2026-01-06 11:02:09,979 DEBUG PIL.PngImagePlugin: STREAM b'IDAT' 131 35981
+2026-01-06 11:02:09,980 DEBUG PIL.PngImagePlugin: STREAM b'IHDR' 16 13
+2026-01-06 11:02:09,981 DEBUG PIL.PngImagePlugin: STREAM b'tEXt' 41 57
+2026-01-06 11:02:09,981 DEBUG PIL.PngImagePlugin: STREAM b'pHYs' 110 9
+2026-01-06 11:02:09,981 DEBUG PIL.PngImagePlugin: STREAM b'IDAT' 131 33623
+2026-01-06 11:02:09,985 INFO ai44pt.runners.excel_report: [excel] wrote data/outputs/runs/nature_full_md_gpt52_pair/reports/review.xlsx
+2026-01-06 11:02:09,985 INFO ai44pt.cli: ========================================================================
+2026-01-06 11:02:09,986 INFO ai44pt.cli: run complete
+2026-01-06 11:02:09,986 INFO ai44pt.cli: ========================================================================
+2026-01-06 11:02:09,986 INFO ai44pt.cli: [run] done stage=excel out_dir=data/outputs/runs/nature_full_md_gpt52_pair artifacts={'raw': 'data/outputs/runs/nature_full_md_gpt52_pair/raw/responses_raw.jsonl', 'parsed': 'data/outputs/runs/nature_full_md_gpt52_pair/parsed/pred_parsed.jsonl', 'agg': 'data/outputs/runs/nature_full_md_gpt52_pair/ensemble/pred_agg.jsonl', 'score': 'data/outputs/runs/nature_full_md_gpt52_pair/reports/score_report.json', 'excel': 'data/outputs/runs/nature_full_md_gpt52_pair/reports/review.xlsx', 'log': 'data/outputs/runs/nature_full_md_gpt52_pair/logs/run.log'}

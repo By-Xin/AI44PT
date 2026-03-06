@@ -1,0 +1,1107 @@
+{
+  "overall": {
+    "total_papers": 50,
+    "total_members": 2,
+    "member_ids": [
+      "oai_gpt-5.2_high_high",
+      "oai_gpt-5.2_medium_medium"
+    ],
+    "member_macro_accuracy_mean": 0.0,
+    "member_macro_accuracy_decided_mean": 0.0,
+    "member_micro_accuracy": 0.0,
+    "member_micro_accuracy_decided": 0.0,
+    "member_macro_coverage_mean": 0.0,
+    "member_micro_coverage": 0.0,
+    "parse_summary": {
+      "total_records": 100,
+      "ok": 100,
+      "parse_error": 0,
+      "llm_error": 0,
+      "lenient_ok": 0,
+      "lenient_ok_total": 100,
+      "strict_ok_rate": 1.0,
+      "lenient_ok_rate": 1.0
+    },
+    "fields": {
+      "q1_fit": {
+        "covered": 0,
+        "correct": 0,
+        "accuracy_on_covered": 0.0,
+        "coverage": 0.0,
+        "confusion": {
+          "tp": 0,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "q3_on_ground": {
+        "covered": 0,
+        "correct": 0,
+        "accuracy_on_covered": 0.0,
+        "coverage": 0.0,
+        "confusion": {
+          "tp": 0,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "q6_generalizable": {
+        "covered": 0,
+        "correct": 0,
+        "accuracy_on_covered": 0.0,
+        "coverage": 0.0,
+        "confusion": {
+          "tp": 0,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "q9_self_interested": {
+        "covered": 0,
+        "correct": 0,
+        "accuracy_on_covered": 0.0,
+        "coverage": 0.0,
+        "confusion": {
+          "tp": 0,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "q12_beyond_self_interest": {
+        "covered": 0,
+        "correct": 0,
+        "accuracy_on_covered": 0.0,
+        "coverage": 0.0,
+        "confusion": {
+          "tp": 0,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "q15_final_type": {
+        "covered": 0,
+        "correct": 0,
+        "accuracy_on_covered": 0.0,
+        "coverage": 0.0,
+        "confusion": {
+          "1": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0
+          },
+          "2": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0
+          },
+          "3": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0
+          },
+          "4": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0
+          }
+        }
+      }
+    },
+    "all_fields": {
+      "decided": 0,
+      "correct": 0,
+      "accuracy_on_decided": 0.0,
+      "coverage": 0.0
+    },
+    "vote": {
+      "total_selected": 50,
+      "status_counts": {
+        "ok": 31,
+        "tie": 5,
+        "insufficient_votes": 7,
+        "no_data": 7,
+        "missing": 0
+      },
+      "correct": 0,
+      "decided": 0,
+      "abstain": 0,
+      "gold_missing_q15": 50,
+      "accuracy_all": 0.0,
+      "accuracy_on_decided": 0.0,
+      "coverage": 0.0,
+      "confusion_decided": {
+        "1": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0
+        },
+        "2": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0
+        },
+        "3": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0
+        },
+        "4": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0
+        }
+      }
+    }
+  },
+  "by_member": {
+    "oai_gpt-5.2_high_high": {
+      "total_selected": 50,
+      "ok": 50,
+      "llm_error": 0,
+      "parse_error": 0,
+      "missing_pred": 0,
+      "abstain": 11,
+      "decided": 0,
+      "correct": 0,
+      "accuracy": 0.0,
+      "accuracy_all": 0.0,
+      "accuracy_on_decided": 0.0,
+      "coverage": 0.0,
+      "mismatched": 0,
+      "gold_missing_q15": 50,
+      "fields": {
+        "q1_fit": {
+          "covered": 0,
+          "correct": 0,
+          "accuracy_on_covered": 0.0,
+          "coverage": 0.0,
+          "confusion": {
+            "tp": 0,
+            "tn": 0,
+            "fp": 0,
+            "fn": 0
+          }
+        },
+        "q3_on_ground": {
+          "covered": 0,
+          "correct": 0,
+          "accuracy_on_covered": 0.0,
+          "coverage": 0.0,
+          "confusion": {
+            "tp": 0,
+            "tn": 0,
+            "fp": 0,
+            "fn": 0
+          }
+        },
+        "q6_generalizable": {
+          "covered": 0,
+          "correct": 0,
+          "accuracy_on_covered": 0.0,
+          "coverage": 0.0,
+          "confusion": {
+            "tp": 0,
+            "tn": 0,
+            "fp": 0,
+            "fn": 0
+          }
+        },
+        "q9_self_interested": {
+          "covered": 0,
+          "correct": 0,
+          "accuracy_on_covered": 0.0,
+          "coverage": 0.0,
+          "confusion": {
+            "tp": 0,
+            "tn": 0,
+            "fp": 0,
+            "fn": 0
+          }
+        },
+        "q12_beyond_self_interest": {
+          "covered": 0,
+          "correct": 0,
+          "accuracy_on_covered": 0.0,
+          "coverage": 0.0,
+          "confusion": {
+            "tp": 0,
+            "tn": 0,
+            "fp": 0,
+            "fn": 0
+          }
+        },
+        "q15_final_type": {
+          "covered": 0,
+          "correct": 0,
+          "accuracy_on_covered": 0.0,
+          "coverage": 0.0,
+          "confusion": {
+            "1": {
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0
+            },
+            "2": {
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0
+            },
+            "3": {
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0
+            },
+            "4": {
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0
+            }
+          }
+        }
+      },
+      "all_fields": {
+        "decided": 0,
+        "correct": 0,
+        "accuracy_on_decided": 0.0,
+        "coverage": 0.0
+      },
+      "rows": [
+        {
+          "paper_no": 1,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 1,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 2,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 3,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 4,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 5,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 6,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 7,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 8,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 9,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 10,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 2,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 11,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 1,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 12,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 13,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 14,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 15,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 3,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 16,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 17,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 3,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 18,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 1,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 19,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 3,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 20,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 21,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 3,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 22,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 23,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 24,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 25,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 1,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 26,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 27,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 28,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 29,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 1,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 30,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 2,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 31,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 3,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 32,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 33,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 34,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 35,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 36,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 37,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 38,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 39,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 40,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 41,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 42,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 1,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 43,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 1,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 44,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 45,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 46,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 3,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 47,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 48,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 49,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 50,
+          "member_id": "oai_gpt-5.2_high_high",
+          "gold_q15": null,
+          "pred_q15": 2,
+          "status": "gold_missing_q15"
+        }
+      ]
+    },
+    "oai_gpt-5.2_medium_medium": {
+      "total_selected": 50,
+      "ok": 50,
+      "llm_error": 0,
+      "parse_error": 0,
+      "missing_pred": 0,
+      "abstain": 10,
+      "decided": 0,
+      "correct": 0,
+      "accuracy": 0.0,
+      "accuracy_all": 0.0,
+      "accuracy_on_decided": 0.0,
+      "coverage": 0.0,
+      "mismatched": 0,
+      "gold_missing_q15": 50,
+      "fields": {
+        "q1_fit": {
+          "covered": 0,
+          "correct": 0,
+          "accuracy_on_covered": 0.0,
+          "coverage": 0.0,
+          "confusion": {
+            "tp": 0,
+            "tn": 0,
+            "fp": 0,
+            "fn": 0
+          }
+        },
+        "q3_on_ground": {
+          "covered": 0,
+          "correct": 0,
+          "accuracy_on_covered": 0.0,
+          "coverage": 0.0,
+          "confusion": {
+            "tp": 0,
+            "tn": 0,
+            "fp": 0,
+            "fn": 0
+          }
+        },
+        "q6_generalizable": {
+          "covered": 0,
+          "correct": 0,
+          "accuracy_on_covered": 0.0,
+          "coverage": 0.0,
+          "confusion": {
+            "tp": 0,
+            "tn": 0,
+            "fp": 0,
+            "fn": 0
+          }
+        },
+        "q9_self_interested": {
+          "covered": 0,
+          "correct": 0,
+          "accuracy_on_covered": 0.0,
+          "coverage": 0.0,
+          "confusion": {
+            "tp": 0,
+            "tn": 0,
+            "fp": 0,
+            "fn": 0
+          }
+        },
+        "q12_beyond_self_interest": {
+          "covered": 0,
+          "correct": 0,
+          "accuracy_on_covered": 0.0,
+          "coverage": 0.0,
+          "confusion": {
+            "tp": 0,
+            "tn": 0,
+            "fp": 0,
+            "fn": 0
+          }
+        },
+        "q15_final_type": {
+          "covered": 0,
+          "correct": 0,
+          "accuracy_on_covered": 0.0,
+          "coverage": 0.0,
+          "confusion": {
+            "1": {
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0
+            },
+            "2": {
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0
+            },
+            "3": {
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0
+            },
+            "4": {
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0
+            }
+          }
+        }
+      },
+      "all_fields": {
+        "decided": 0,
+        "correct": 0,
+        "accuracy_on_decided": 0.0,
+        "coverage": 0.0
+      },
+      "rows": [
+        {
+          "paper_no": 1,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 2,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 3,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 4,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 5,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 6,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 7,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 3,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 8,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 9,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 10,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 2,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 11,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 1,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 12,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 13,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 14,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 15,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 3,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 16,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 17,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 3,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 18,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 1,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 19,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 20,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 21,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 3,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 22,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 23,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 24,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 25,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 26,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 27,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 3,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 28,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 29,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 1,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 30,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 2,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 31,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 3,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 32,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 33,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 34,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 35,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 36,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 37,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 38,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 39,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 40,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 41,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 42,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 1,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 43,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 1,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 44,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 45,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 46,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 3,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 47,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": null,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 48,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 49,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 4,
+          "status": "gold_missing_q15"
+        },
+        {
+          "paper_no": 50,
+          "member_id": "oai_gpt-5.2_medium_medium",
+          "gold_q15": null,
+          "pred_q15": 1,
+          "status": "gold_missing_q15"
+        }
+      ]
+    }
+  }
+}

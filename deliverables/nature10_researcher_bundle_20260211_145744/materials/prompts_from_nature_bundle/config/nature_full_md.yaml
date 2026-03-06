@@ -1,0 +1,126 @@
+# Nature (unlabeled) run config: full-text Markdown files named <paper_no>.md
+#
+# Usage:
+#   PYTHONPATH=src python -m ai44pt --config config/nature_full_md.yaml
+#
+# Inputs:
+# - sections_jsonl: built from `tools/build_sections_from_md_dir.py`
+# - gold_jsonl: placeholder-only (no human truth); used only to enable score/excel stages
+
+run:
+  run_id: "nature_full_md_gpt52_pair"
+  stage: "all"
+  out_dir: "data/outputs/runs/nature_full_md_gpt52_pair"
+  resume: false
+  overwrite_infer: true
+  overwrite_parsed: true
+  overwrite_reports: true
+  verbosity: "verbose"
+
+data:
+  sections_jsonl: "data/processed/nature_sections_full_md.jsonl"
+  gold_jsonl: "data/processed/nature_placeholder_gold_labels.jsonl"
+
+select:
+  only_difficult: false
+  limit: null
+  shuffle: false
+  seed: 42
+
+mode:
+  # mode=full reads the full markdown from record.text_path
+  name: "full"
+  fields: []
+
+llm:
+  members:
+    - id: "oai_gpt-5.2_high_high"
+      provider: "openai"
+      api: "chat"
+      model: "gpt-5.2-2025-12-11"
+      temperature: null
+      reasoning_effort: high
+      verbosity: high
+    - id: "oai_gpt-5.2_medium_medium"
+      provider: "openai"
+      api: "chat"
+      model: "gpt-5.2-2025-12-11"
+      temperature: null
+      reasoning_effort: medium
+      verbosity: medium
+  max_output_tokens: 6000
+  timeout_s: 120
+  max_retries: 3
+  response_format_json: true
+
+concurrency:
+  max_in_flight: 5
+  requests_per_minute: 20
+  log_every: 1
+
+prompt:
+  prompt_id: "jrg_4pt_v1"
+  prompt_version: "2025-12-17-a"
+  require_citations: false
+  theory_file: "config/theory/4pt_theory.md"
+  template:
+    description: "Nature (unlabeled) 4PT coding: theory-injected JSON"
+    system: |
+      You are a careful research assistant for a public policy coding task (Cashore 4 Problem Types).
+      You must follow the user's instructions and output JSON only.
+      You MUST use ONLY the provided 4PT theory text for definitions and decision rules; do NOT rely on prior knowledge.
+      If your prior knowledge conflicts with the provided 4PT theory text, follow the provided 4PT theory text.
+      Do not invent facts beyond the provided paper text. If the text is insufficient, use null.
+    user: |
+      First, read the provided 4PT theory text. You must apply ONLY this theory to the paper text (no external/prior knowledge).
+
+      <4PT_THEORY>
+      {theory_text}
+      </4PT_THEORY>
+
+      Now answer the following questions (these are the authoritative question wordings used by the human coders).
+      You MUST answer them and map them to the JSON fields exactly as specified.
+
+      Q1: Does the article fit in the universe of sustainability analyses we seek to assess? (Yes/No)
+        - JSON field: q1_fit (true/false/null)
+
+      Q3: Do the analysis, conclusions, and theories derived from, and directed to, understanding and/or managing a clearly specified 'on the ground' problem or class of problems? (Yes/No)
+        - JSON field: q3_on_ground (true/false/null)
+
+      Q6: Are the analysis, conclusions, and theories generated to apply beyond understanding, and/or managing a clearly specified 'on the ground' problem or class of problems? (Yes/No)
+        - JSON field: q6_generalizable (true/false/null)
+
+      Q9: Do the analysis, conclusions, and theories treat individuals, organizations and states as largely self-interested, satisfaction driven entities that seek to maximize some kind of 'utility' outcome? (Yes/No)
+        - JSON field: q9_self_interested (true/false/null)
+
+      Q12: Do the analysis incorporate theories and conclusions incorporate an assessment of individuals, organizations and/or states that extends beyond self-interested satisfaction seeking motivations? (Yes/No)
+        - JSON field: q12_beyond_self_interest (true/false/null)
+
+      You will be given paper text. Answer the coding questions below based ONLY on:
+      (1) the paper text provided here, and
+      (2) the 4PT theory text above.
+
+      Output JSON ONLY (no markdown, no code fences). The JSON must include EXACTLY these keys:
+      - paper_no: integer
+      - q1_fit: boolean|null
+      - q3_on_ground: boolean|null
+      - q6_generalizable: boolean|null
+      - q9_self_interested: boolean|null
+      - q12_beyond_self_interest: boolean|null
+      - q15_final_type: 1|2|3|4|null   (null means NA / cannot determine)
+      - q15_confidence: number between 0 and 1
+      - q15_decision: short string explaining the final type decision
+      - arguments: object with keys ["q1_fit","q3_on_ground","q6_generalizable","q9_self_interested","q12_beyond_self_interest","q15_final_type"] and short justification strings
+
+      If require_citations=true, also include:
+      - citations: array of objects with keys "field" and "citation" (both strings)
+        Provide citations as short references to the given text (no need to be machine-verifiable yet).
+
+      Inputs:
+      paper_no: {paper_no}
+      mode: {mode}
+      require_citations: {require_citations}
+
+      Paper text:
+      {paper_text}
+
