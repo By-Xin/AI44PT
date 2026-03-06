@@ -1,0 +1,13 @@
+﻿member,question,comparable_n,match_n,accuracy,mismatch_ids
+oai_gpt-5.2_high_high,q1,10,9,0.9,5
+oai_gpt-5.2_high_high,q3,9,7,0.7777777777777778,"19,50"
+oai_gpt-5.2_high_high,q6,9,1,0.1111111111111111,"1,4,9,18,27,30,40,50"
+oai_gpt-5.2_high_high,q9,9,7,0.7777777777777778,"4,9"
+oai_gpt-5.2_high_high,q12,8,6,0.75,"9,18"
+oai_gpt-5.2_high_high,q15,8,5,0.625,"1,9,19"
+oai_gpt-5.2_medium_medium,q1,10,10,1.0,
+oai_gpt-5.2_medium_medium,q3,10,8,0.8,"30,50"
+oai_gpt-5.2_medium_medium,q6,10,2,0.2,"1,4,5,9,18,19,30,40"
+oai_gpt-5.2_medium_medium,q9,9,6,0.6666666666666666,"4,9,18"
+oai_gpt-5.2_medium_medium,q12,8,7,0.875,18
+oai_gpt-5.2_medium_medium,q15,8,6,0.75,"27,50"
